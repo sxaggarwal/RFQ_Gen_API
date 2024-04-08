@@ -145,7 +145,7 @@ class RfqGen(tk.Tk):
                 
                 if key in my_dict:
                     dict_values = my_dict[key]
-                    for j, k, l in zip(dict_values, quote_assembly_fk, a): 
+                    for j, k, l in zip(dict_values, quote_assembly_fk, a):   # noqa: E741
                         if j is not None:
                             self.data_base_conn.create_bom_quote(quote_pk, j, k, l, y)
                             y+=1

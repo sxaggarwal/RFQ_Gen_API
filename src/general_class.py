@@ -1,5 +1,5 @@
 from src.connection import get_connection
-from src.exceptions import ItemNotFoundError, SchemaError
+from src.exceptions import  SchemaError
 from src.schema import _get_schema
 import pyodbc
 import logging
