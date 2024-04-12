@@ -1,6 +1,6 @@
 from src.connection import get_connection
 from src.exceptions import  SchemaError
-from src.schema import _get_schema
+from src.schema import _get_schema, print_schema
 import pyodbc
 import logging
 
@@ -55,6 +55,7 @@ class TableManger:
                 conn.commit()
             return return_pk
         except pyodbc.Error as e:
+            self.logger.error(f"Inserted {self.table_name}. {self.table_name}PK: {return_pk} - {e}")
             print(e)
 
     def get(self, *args, **kwargs) -> list:
@@ -85,6 +86,7 @@ class TableManger:
                     return None
                     # raise ItemNotFoundError        
         except pyodbc.Error as e:
+            self.logger.error(f"GET METHOD Query Built -> {query} -> ERROR {e}")
             print(e)
 
     def update(self, pk, **kwargs):
@@ -96,12 +98,13 @@ class TableManger:
         set_string = ", ".join([f"{key} = '{value}'" for key, value in kwargs.items()])
 
         query = f"UPDATE {self.table_name} SET {set_string} WHERE {self.table_name}PK = {pk};"
-
+        self.logger.info(f"UPDATE METHOD Query Built -> {query}")
         try:
             with get_connection() as conn:
                 cursor = conn.cursor()
                 cursor.execute(query)
         except pyodbc.Error as e:
+            self.logger.error(f"GET METHOD Query Built -> {query}")
             print(f"Error - pyodbc -> {e}")
 
     def delete(self, pk):
@@ -115,3 +118,7 @@ class TableManger:
                 conn.commit()
         except pyodbc.Error as e:
             print(e)
+
+if __name__ == "__main__":
+    i_table = TableManger("Item")
+    print_schema(i_table.schema)

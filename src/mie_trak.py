@@ -80,7 +80,7 @@ class MieTrak:
         rfq_pk = self.request_for_quote_table.insert(info_dict)
         return rfq_pk
     
-    def get_or_create_item(self, part_number, item_type_fk=1, mps_item=1, purchase=1, forecast_on_mrp=1, mps_on_mrp=1, service_item=1, unit_of_measure_set_fk=1, vendor_unit=1.0, manufactured_item=0, calculation_type_fk=17, inventoriable=1, purchase_order_comment=None,  description=None, comment=None, only_create=None, bulk_ship=1, ship_loose=1):
+    def get_or_create_item(self, part_number, item_type_fk=1, mps_item=1, purchase=1, forecast_on_mrp=1, mps_on_mrp=1, service_item=1, unit_of_measure_set_fk=1, vendor_unit=1.0, manufactured_item=0, calculation_type_fk=17, inventoriable=1, purchase_order_comment=None,  description=None, comment=None, only_create=None, bulk_ship=1, ship_loose=1, cert_reqd_by_supplier=0, can_not_create_work_order=0, can_not_invoice=0):
         if only_create is None:
             item_pk = self.item_table.get("ItemPK", PartNumber=part_number)
             if item_pk:
@@ -91,7 +91,7 @@ class MieTrak:
                 }
                 item_inventory_pk = self.item_inventory_table.insert(inventory_info_dict)
                 item_info_dict = {
-                    "ItemInventoryFk" : item_inventory_pk, 
+                    "ItemInventoryFK" : item_inventory_pk, 
                     "PartNumber": part_number, 
                     "ItemTypeFK": item_type_fk, 
                     "Description" : description, 
@@ -109,6 +109,9 @@ class MieTrak:
                     "Inventoriable": inventoriable, 
                     "BulkShip": bulk_ship, 
                     "ShipLoose": ship_loose,
+                    "CertificationsRequiredBySupplier": cert_reqd_by_supplier,
+                    "CanNotCreateWorkOrder": can_not_create_work_order,
+                    "CanNotInvoice": can_not_invoice,
                 }
                 item_pk = self.item_table.insert(item_info_dict)
                 return item_pk
@@ -136,6 +139,9 @@ class MieTrak:
                 "Inventoriable": inventoriable, 
                 "BulkShip": bulk_ship, 
                 "ShipLoose": ship_loose,
+                "CertificationsRequiredBySupplier": cert_reqd_by_supplier,
+                "CanNotCreateWorkOrder": can_not_create_work_order,
+                "CanNotInvoice": can_not_invoice,
             }
             item_pk = self.item_table.insert(item_info_dict)
             return item_pk

@@ -171,7 +171,8 @@ class RfqGen(tk.Tk):
                                     self.data_base_conn.upload_documents(url, item_fk=j, document_type_fk=2, secure_document=1, document_group_pk=pk, print_with_purchase_order=1)
                                 else:
                                     self.data_base_conn.upload_documents(url, item_fk=j, document_type_fk=2, document_group_pk=pk, print_with_purchase_order=1)
-                    self.data_base_conn.insert_part_details_in_item(pk_value[0], key, dict_values, item_type='Material')
+                    if pk_value[0]:
+                        self.data_base_conn.insert_part_details_in_item(pk_value[0], key, dict_values, item_type='Material')
             
             messagebox.showinfo("Success", f"RFQ generated successfully! RFQ Number: {rfq_pk}")
             self.file_path_PL_entry.delete(0, tk.END)
