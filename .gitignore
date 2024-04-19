@@ -1,3 +1,7 @@
 logs/
 MieTrakAPI.log
 __pycache__/
+build/
+dist/
+main.spec
+RfqGen.zip

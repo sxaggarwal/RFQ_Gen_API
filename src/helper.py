@@ -71,7 +71,7 @@ def pk_info_dict(info_dict):
             if result:
                 mat_pk = result[0][0]
             else:
-                pk = m.get_or_create_item(value[5], service_item=0, purchase=1, manufactured_item=0, item_type_fk= 2, only_create = 1, bulk_ship=0, ship_loose=0, cert_reqd_by_supplier=1)
+                pk = m.get_or_create_item(value[5], service_item=0, purchase=1, manufactured_item=0, item_type_fk= 2, only_create = 1, bulk_ship=0, ship_loose=0, cert_reqd_by_supplier=1, purchase_account_fk=127, cogs_acc_fk=127, calculation_type_fk=4)
                 mat_pk = pk
         
         if value[6]:
@@ -79,11 +79,11 @@ def pk_info_dict(info_dict):
             if result: 
                 fin_pk = result[0][0]
             else:
-                pk = m.get_or_create_item(part_number=f"{key} - OP Finish", item_type_fk=5, comment = value[6], purchase_order_comment=value[6], inventoriable=0, only_create=1, cert_reqd_by_supplier=1, can_not_create_work_order=1, can_not_invoice=1)
+                pk = m.get_or_create_item(part_number=f"{key} - OP Finish", item_type_fk=5, comment = value[6], purchase_order_comment=value[6], inventoriable=0, only_create=1, cert_reqd_by_supplier=1, can_not_create_work_order=1, can_not_invoice=1, purchase_account_fk=125, cogs_acc_fk=125, calculation_type_fk=17)
                 fin_pk = pk
         
         if value[7]:
-            pk = m.get_or_create_item(part_number=f"{key} - OP HT", item_type_fk=5, description= value[7], comment= value[7], purchase_order_comment= value[7], inventoriable= 0, only_create=1, cert_reqd_by_supplier=1, can_not_create_work_order=1, can_not_invoice=1)
+            pk = m.get_or_create_item(part_number=f"{key} - OP HT", item_type_fk=5, description= value[7], comment= value[7], purchase_order_comment= value[7], inventoriable= 0, only_create=1, cert_reqd_by_supplier=1, can_not_create_work_order=1, can_not_invoice=1, purchase_account_fk=125, cogs_acc_fk=125, calculation_type_fk=17)
             ht_pk = pk
         my_dict[key] = (mat_pk, ht_pk, fin_pk)
     return my_dict

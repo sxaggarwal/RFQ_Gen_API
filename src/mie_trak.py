@@ -80,7 +80,7 @@ class MieTrak:
         rfq_pk = self.request_for_quote_table.insert(info_dict)
         return rfq_pk
     
-    def get_or_create_item(self, part_number, item_type_fk=1, mps_item=1, purchase=1, forecast_on_mrp=1, mps_on_mrp=1, service_item=1, unit_of_measure_set_fk=1, vendor_unit=1.0, manufactured_item=0, calculation_type_fk=17, inventoriable=1, purchase_order_comment=None,  description=None, comment=None, only_create=None, bulk_ship=1, ship_loose=1, cert_reqd_by_supplier=0, can_not_create_work_order=0, can_not_invoice=0):
+    def get_or_create_item(self, part_number, item_type_fk=1, mps_item=1, purchase=1, forecast_on_mrp=1, mps_on_mrp=1, service_item=1, unit_of_measure_set_fk=1, vendor_unit=1.0, manufactured_item=0, calculation_type_fk=1, inventoriable=1, purchase_order_comment=None,  description=None, comment=None, only_create=None, bulk_ship=1, ship_loose=1, cert_reqd_by_supplier=0, can_not_create_work_order=0, can_not_invoice=0, general_ledger_account_fk=100, purchase_account_fk=116, cogs_acc_fk=116):
         if only_create is None:
             item_pk = self.item_table.get("ItemPK", PartNumber=part_number)
             if item_pk:
@@ -112,6 +112,9 @@ class MieTrak:
                     "CertificationsRequiredBySupplier": cert_reqd_by_supplier,
                     "CanNotCreateWorkOrder": can_not_create_work_order,
                     "CanNotInvoice": can_not_invoice,
+                    "GeneralLedgerAccountFK": general_ledger_account_fk,
+                    "PurchaseGeneralLedgerAccountFK" : purchase_account_fk,
+                    "SalesCogsAccountFK": cogs_acc_fk,
                 }
                 item_pk = self.item_table.insert(item_info_dict)
                 return item_pk
@@ -142,6 +145,9 @@ class MieTrak:
                 "CertificationsRequiredBySupplier": cert_reqd_by_supplier,
                 "CanNotCreateWorkOrder": can_not_create_work_order,
                 "CanNotInvoice": can_not_invoice,
+                "GeneralLedgerAccountFK": general_ledger_account_fk,
+                "PurchaseGeneralLedgerAccountFK" : purchase_account_fk,
+                "SalesCogsAccountFK": cogs_acc_fk,
             }
             item_pk = self.item_table.insert(item_info_dict)
             return item_pk
@@ -207,7 +213,7 @@ class MieTrak:
                             vendor_unit=1.00000, grain_direction=0, parts_per_blank=1.000,
                             against_grain=0, double_sided=0, cert_reqd=0, non_amortized_item=0,
                             pull=0, not_include_in_piece_price=0, lock=0, nestable=0,
-                            bulk_ship=0, ship_loose=0, customer_supplied_material=0):        
+                            bulk_ship=0, ship_loose=0, customer_supplied_material=0, thickness=0.00):        
         info_dict = {
             "QuoteFK": quote_fk, 
             "ItemFK": item_fk, 
@@ -250,6 +256,7 @@ class MieTrak:
             "PiecePrice": piece_price, 
             "StockPieces": stock_pieces,
             "StockPiecesScrapPercentage": stock_pieces_scrap_perc,
+            "Thickness": thickness, 
         }
         self.quote_assembly_table.insert(info_dict)
     
