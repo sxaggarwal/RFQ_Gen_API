@@ -77,7 +77,7 @@ class RfqGen(tk.Tk):
             messagebox.showerror("File Browse Error", "An error occurred during file selection. Please try again.")
     
     def generate_rfq(self):
-        """ """
+        """ Main function for generating RFQ """
         if self.customer_select_box.get() and self.file_path_PR_entry.get(0):
             party_pk = self.party_pk
             billing_details, state, country = self.data_base_conn.get_address(party_pk)
@@ -93,87 +93,96 @@ class RfqGen(tk.Tk):
             restricted = False
             quote_pk_dict = {}
             for key, value in info_dict.items():
-                if self.itar_restricted_var.get(): # checking if the user clicked on Restricted box or not and based on that destination path is decided
-                    destination_path = rf'y:\PDM\Restricted\{self.customer_select_box.get()}\{key}'
-                    restricted = True
-                else:
-                    destination_path = rf'y:\PDM\Non-restricted\{self.customer_select_box.get()}\{key}'
-                
-                for file in user_selected_file_paths:
-                    # folder is get or created and file is copied to this folder
-                    file_path_to_add_to_rfq = transfer_file_to_folder(destination_path, file)
-                    path = file_path_to_add_to_rfq.lower()
-                    if "_pl_" in path or "spdl" in path or "psdl" in path or "pl" in os.path.basename(path):
-                        path_dict[file_path_to_add_to_rfq] = 26
-                    elif "dwg" in path or "drw" in path:
-                        path_dict[file_path_to_add_to_rfq] = 27
-                    elif "step" in path or "stp" in path:
-                        path_dict[file_path_to_add_to_rfq] = 30
-                    elif "zsp" in path or "speco" in path:
-                        path_dict[file_path_to_add_to_rfq] = 33
-                    elif ".cat" in path:
-                        path_dict[file_path_to_add_to_rfq] = 16
+                if value[13] is None:
+                    if self.itar_restricted_var.get(): # checking if the user clicked on Restricted box or not and based on that destination path is decided
+                        destination_path = rf'y:\PDM\Restricted\{self.customer_select_box.get()}\{key}'
+                        restricted = True
                     else:
-                        path_dict[file_path_to_add_to_rfq] = None
-                
-                for file, pk in path_dict.items():
-                    if count==1:
-                        if restricted:
-                            self.data_base_conn.upload_documents(file, rfq_fk=rfq_pk, document_type_fk=6, secure_document=1, document_group_pk=pk)
+                        destination_path = rf'y:\PDM\Non-restricted\{self.customer_select_box.get()}\{key}'
+                    
+                    for file in user_selected_file_paths:
+                        # folder is get or created and file is copied to this folder
+                        file_path_to_add_to_rfq = transfer_file_to_folder(destination_path, file)
+                        path = file_path_to_add_to_rfq.lower()
+                        if "_pl_" in path or "spdl" in path or "psdl" in path or "pl" in os.path.basename(path):
+                            path_dict[file_path_to_add_to_rfq] = 26
+                        elif "dwg" in path or "drw" in path:
+                            path_dict[file_path_to_add_to_rfq] = 27
+                        elif "step" in path or "stp" in path:
+                            path_dict[file_path_to_add_to_rfq] = 30
+                        elif "zsp" in path or "speco" in path:
+                            path_dict[file_path_to_add_to_rfq] = 33
+                        elif ".cat" in path:
+                            path_dict[file_path_to_add_to_rfq] = 16
                         else:
-                            self.data_base_conn.upload_documents(file, rfq_fk=rfq_pk, document_type_fk=6, document_group_pk=pk)
-                count+=1
+                            path_dict[file_path_to_add_to_rfq] = None
+                    
+                    for file, pk in path_dict.items():
+                        if count==1:
+                            if restricted:
+                                self.data_base_conn.upload_documents(file, rfq_fk=rfq_pk, document_type_fk=6, secure_document=1, document_group_pk=pk)
+                            else:
+                                self.data_base_conn.upload_documents(file, rfq_fk=rfq_pk, document_type_fk=6, document_group_pk=pk)
+                    count+=1
 
-                item_pk = self.data_base_conn.get_or_create_item(key, description=value[0], purchase=0, service_item=0, manufactured_item=1)
-                matching_paths = {path:pk for path,pk in path_dict.items() if key in path}
-                for url, pk in matching_paths.items():
-                        if restricted:
-                            self.data_base_conn.upload_documents(url, item_fk=item_pk, document_type_fk=2, secure_document=1, document_group_pk=pk)
-                        else:
-                            self.data_base_conn.upload_documents(url, item_fk=item_pk, document_type_fk=2, document_group_pk=pk)
-                
-                quote_pk = self.data_base_conn.create_quote(party_pk, item_pk, 0, key)
-                quote_pk_dict[key] = quote_pk
-                self.data_base_conn.add_operation_to_quote(quote_pk)
+                    item_pk = self.data_base_conn.get_or_create_item(key, description=value[0], purchase=0, service_item=0, manufactured_item=1)
+                    matching_paths = {path:pk for path,pk in path_dict.items() if key in path}
+                    for url, pk in matching_paths.items():
+                            if restricted:
+                                self.data_base_conn.upload_documents(url, item_fk=item_pk, document_type_fk=2, secure_document=1, document_group_pk=pk)
+                            else:
+                                self.data_base_conn.upload_documents(url, item_fk=item_pk, document_type_fk=2, document_group_pk=pk)
+                    
+                    quote_pk = self.data_base_conn.create_quote(party_pk, item_pk, 0, key)
+                    quote_pk_dict[key] = quote_pk
+                    self.data_base_conn.add_operation_to_quote(quote_pk)
 
-                a = [6,21,22]
-                quote_assembly_fk = []
+                    a = [6,21,22]
+                    quote_assembly_fk = []
 
-                for x in a:
-                    quote_assembly_pk = self.quote_assembly_table.get("QuoteAssemblyPK", QuoteFK=quote_pk, SequenceNumber=x)
-                    quote_assembly_fk.append(quote_assembly_pk[0][0])
-                
-                if key in my_dict:
-                    dict_values = my_dict[key]
-                    for j, k, l in zip(dict_values, quote_assembly_fk, a):   # noqa: E741
-                        if j is not None:
-                            self.data_base_conn.create_bom_quote(quote_pk, j, k, l, y, part_length=value[1], part_width=value[3], thickness=value[2])
-                            y+=1
-                
-                if value[12] is None:
-                    rfq_line_pk = self.data_base_conn.create_rfq_line_item(item_pk, rfq_pk, i, quote_pk, quantity=value[10])
-                    i+=1
-                    self.data_base_conn.rfq_line_qty(rfq_line_pk, value[10])
+                    for x in a:
+                        quote_assembly_pk = self.quote_assembly_table.get("QuoteAssemblyPK", QuoteFK=quote_pk, SequenceNumber=x)
+                        quote_assembly_fk.append(quote_assembly_pk[0][0])
+                    
+                    if key in my_dict:
+                        dict_values = my_dict[key]
+                        for j, k, l in zip(dict_values, quote_assembly_fk, a):   # noqa: E741
+                            if j is not None:
+                                self.data_base_conn.create_bom_quote(quote_pk, j, k, l, y, part_length=value[1], part_width=value[3], thickness=value[2])
+                                y+=1
+                    
+                    if value[12] is None:
+                        rfq_line_pk = self.data_base_conn.create_rfq_line_item(item_pk, rfq_pk, i, quote_pk, quantity=value[10])
+                        i+=1
+                        self.data_base_conn.rfq_line_qty(rfq_line_pk, value[10])
+                    else:
+                        part_num = value[12]
+                        fk = quote_pk_dict.get(part_num)
+                        self.data_base_conn.create_assy_quote(quote_pk, fk, qty_req=value[10])
+                    
+                    if key in info_dict:
+                        dict_values = [value[1], value[2], value[3], value[4], value[8], value[9], value[11]]
+                        self.data_base_conn.insert_part_details_in_item(item_pk, key, dict_values)
+                        pk_value = my_dict[key]
+                        for j in pk_value[1:]:
+                            if j:
+                                self.data_base_conn.insert_part_details_in_item(j, key, dict_values)
+                                for url, pk in matching_paths.items():
+                                    if restricted:
+                                        self.data_base_conn.upload_documents(url, item_fk=j, document_type_fk=2, secure_document=1, document_group_pk=pk, print_with_purchase_order=1)
+                                    else:
+                                        self.data_base_conn.upload_documents(url, item_fk=j, document_type_fk=2, document_group_pk=pk, print_with_purchase_order=1)
+                        if pk_value[0]:
+                            self.data_base_conn.insert_part_details_in_item(pk_value[0], key, dict_values, item_type='Material')
+
                 else:
                     part_num = value[12]
                     fk = quote_pk_dict.get(part_num)
-                    self.data_base_conn.create_assy_quote(quote_pk, fk, qty_req=value[10])
-                
-                if key in info_dict:
-                    dict_values = [value[1], value[2], value[3], value[4], value[8], value[9], value[11]]
-                    self.data_base_conn.insert_part_details_in_item(item_pk, key, dict_values)
-                    pk_value = my_dict[key]
-                    for j in pk_value[1:]:
-                        if j:
-                            self.data_base_conn.insert_part_details_in_item(j, key, dict_values)
-                            for url, pk in matching_paths.items():
-                                if restricted:
-                                    self.data_base_conn.upload_documents(url, item_fk=j, document_type_fk=2, secure_document=1, document_group_pk=pk, print_with_purchase_order=1)
-                                else:
-                                    self.data_base_conn.upload_documents(url, item_fk=j, document_type_fk=2, document_group_pk=pk, print_with_purchase_order=1)
-                    if pk_value[0]:
-                        self.data_base_conn.insert_part_details_in_item(pk_value[0], key, dict_values, item_type='Material')
-            
+                    quote_assembly_pk = self.quote_assembly_table.get("QuoteAssemblyPK", QuoteFK=fk, SequenceNumber=24)
+                    item_fk = self.data_base_conn.get_or_create_item(key, item_type_fk=3, description=value[0], calculation_type_fk=12, purchase_account_fk=130, cogs_acc_fk=130, mps_item=0, forecast_on_mrp=0,mps_on_mrp=0,service_item=0,ship_loose=0,bulk_ship=0)
+                    self.data_base_conn.create_bom_quote(fk, item_fk, quote_assembly_pk[0][0], 24, y)
+                    y+=1
+
             messagebox.showinfo("Success", f"RFQ generated successfully! RFQ Number: {rfq_pk}")
             self.file_path_PL_entry.delete(0, tk.END)
             self.file_path_PR_entry.delete(0, tk.END)

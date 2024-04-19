@@ -33,9 +33,17 @@ class MieTrak:
             return short_name, email, party_pk
     
     def get_address(self, party_fk):
-        billing_details = self.address_table.get("AddressPK", "Name", "Address1", "Address2", "AddressAlt", "City", "ZipCode", PartyFK=party_fk)[0]
+        billing_details = self.address_table.get("AddressPK", "Name", "Address1", "Address2", "AddressAlt", "City", "ZipCode", PartyFK=party_fk)
+        if billing_details:
+            billing_details = billing_details[0]
+        else:
+            billing_details = [(None,None,None,None,None,None,None,)][0]
         info = self.address_table.get("StateFK", "CountryFK", PartyFK=party_fk)
-        state_fk, country_fk = info[0]
+        if info:
+            state_fk, country_fk = info[0]
+        else:
+            state_fk=None
+            country_fk=None
         if state_fk:
             state = self.state_table.get("Description", StatePK=state_fk)
         else:
