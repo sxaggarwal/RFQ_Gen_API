@@ -15,15 +15,24 @@ class RfqGen(tk.Tk):
         self.quote_assembly_table = TableManger("QuoteAssembly")
         self.make_combobox()
     
+    def filter_combobox(self, event):
+        current_text = self.customer_select_box.get().lower()
+        self.customer_select_box['values'] = ()
+        filtered_values = [name for name in self.customer_names if name.lower().startswith(current_text)]
+        self.filtered_indices = [idx for idx, name in enumerate(self.customer_names) if name in filtered_values]
+        self.customer_select_box['values'] = filtered_values
+    
     def make_combobox(self):
         tk.Label(self, text="Select Customer: ").grid(row=0, column=0)
-        self.customer_select_box = ttk.Combobox(self, values=self.customer_names, state="readonly")
+        self.customer_select_box = ttk.Combobox(self, values=self.customer_names, state="normal")
         self.customer_select_box.grid(row=1, column=0)
         
         tk.Label(self, text="Selected Customer Info: ").grid(row=2, column=0)
         self.customer_info_text = tk.Text(self, height=4, width=30)
         self.customer_info_text.grid(row=3, column=0)
 
+        self.filtered_indices = []
+        self.customer_select_box.bind('<KeyRelease>', self.filter_combobox)
         self.customer_select_box.bind("<<ComboboxSelected>>", self.update_customer_info)
 
         tk.Label(self, text="Enter RFQ Number: ").grid(row=4, column=0)
@@ -53,10 +62,17 @@ class RfqGen(tk.Tk):
 
     def update_customer_info(self, event=None):
         self.customer_info_text.delete(1.0, tk.END)
-        short_name, email, party_pk = self.data_base_conn.get_customer_data(selected_customer_index=self.customer_select_box.current())
-        self.customer_info_text.insert(tk.END, f"Name: {short_name}\nEmail: {email}")
-        self.party_pk = party_pk
-    
+        if self.filtered_indices:
+            current_index = self.customer_select_box.current()
+            selected_customer_index = self.filtered_indices[current_index]
+            short_name, email, party_pk = self.data_base_conn.get_customer_data(selected_customer_index=selected_customer_index)
+            self.customer_info_text.insert(tk.END, f"Name: {short_name}\nEmail: {email}")
+            self.party_pk = party_pk
+        else:
+            short_name, email, party_pk = self.data_base_conn.get_customer_data(selected_customer_index=self.customer_select_box.current())
+            self.customer_info_text.insert(tk.END, f"Name: {short_name}\nEmail: {email}")
+            self.party_pk = party_pk
+        
     def browse_files_parts_requested(self, filetype: str, list_box):
         """ Browse button for Part requested section, filetype only accepts -> "All files", "Excel files" """
         if filetype == "Excel files":
