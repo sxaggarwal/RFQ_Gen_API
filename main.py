@@ -1,9 +1,27 @@
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
+from threading import Thread
 from src.general_class import TableManger
 from src.mie_trak import MieTrak
 from src.helper import create_dict_from_excel, transfer_file_to_folder, pk_info_dict
 import os
+
+class LoadingScreen(tk.Toplevel):
+    def __init__(self, master, max_progress):
+        super().__init__(master)
+        self.title("Generating RFQ")
+        self.geometry("300x100")
+        self.protocol("WM_DELETE_WINDOW", self.disable_close_button)
+        self.progressbar = ttk.Progressbar(self, orient="horizontal", length=200, mode="determinate", maximum=max_progress)
+        self.progressbar.pack(pady=10)
+    
+    def set_progress(self, value):
+        self.progressbar["value"] = value
+        if value >= self.progressbar["maximum"]:
+            self.destroy()
+    
+    def disable_close_button(self):
+        pass
 
 class RfqGen(tk.Tk):
     def __init__(self):
@@ -57,9 +75,13 @@ class RfqGen(tk.Tk):
         self.itar_restricted_checkbox = tk.Checkbutton(self, text="ITAR RESTRICTED", variable=self.itar_restricted_var)
         self.itar_restricted_checkbox.grid(row=12, column=0)
 
-        generate_button = tk.Button(self, text="Generate RFQ", command=self.generate_rfq)
+        generate_button = tk.Button(self, text="Generate RFQ", command=self.generate_rfq_with_loading_screen)
         generate_button.grid(row=13, column=0)
-
+    
+    def generate_rfq_with_loading_screen(self):
+        self.loading_screen = LoadingScreen(self, max_progress=100)
+        Thread(target=self.generate_rfq, args=(self.loading_screen,)).start()  # Start RFQ generation in a separate thread
+   
     def update_customer_info(self, event=None):
         self.customer_info_text.delete(1.0, tk.END)
         if self.filtered_indices:
@@ -92,7 +114,7 @@ class RfqGen(tk.Tk):
             print(f"Error during file browse: {e}")
             messagebox.showerror("File Browse Error", "An error occurred during file selection. Please try again.")
     
-    def generate_rfq(self):
+    def generate_rfq(self, loading_screen):
         """ Main function for generating RFQ """
         if self.customer_select_box.get() and self.file_path_PR_entry.get(0):
             party_pk = self.party_pk
@@ -108,6 +130,8 @@ class RfqGen(tk.Tk):
             my_dict = pk_info_dict(info_dict)
             restricted = False
             quote_pk_dict = {}
+            loading_screen.set_progress(10)
+            ct=20
             for key, value in info_dict.items():
                 if value[13] is None:
                     if self.itar_restricted_var.get(): # checking if the user clicked on Restricted box or not and based on that destination path is decided
@@ -198,12 +222,16 @@ class RfqGen(tk.Tk):
                     item_fk = self.data_base_conn.get_or_create_item(key, item_type_fk=3, description=value[0], calculation_type_fk=12, purchase_account_fk=130, cogs_acc_fk=130, mps_item=0, forecast_on_mrp=0,mps_on_mrp=0,service_item=0,ship_loose=0,bulk_ship=0)
                     self.data_base_conn.create_bom_quote(fk, item_fk, quote_assembly_pk[0][0], 24, y)
                     y+=1
-
+                loading_screen.set_progress(ct)
+                if ct<100:
+                    ct+=10
+            loading_screen.set_progress(100)
             messagebox.showinfo("Success", f"RFQ generated successfully! RFQ Number: {rfq_pk}")
             self.file_path_PL_entry.delete(0, tk.END)
             self.file_path_PR_entry.delete(0, tk.END)
             self.rfq_number_text.delete(0, tk.END)
         else:
+            self.loading_screen.destroy()
             messagebox.showerror("ERROR", "Select Customer/ Upload Parts Requested File")
             self.file_path_PR_entry.delete(0, tk.END)
             self.file_path_PL_entry.delete(0, tk.END)
