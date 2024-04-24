@@ -29,7 +29,7 @@ class RfqGen(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("RFQGen")
-        self.geometry("305x415")
+        self.geometry("500x415")
         self.data_base_conn = MieTrak()
         self.customer_names = self.data_base_conn.get_customer_data(names=True)
         self.quote_assembly_table = TableManger("QuoteAssembly")
@@ -47,13 +47,19 @@ class RfqGen(tk.Tk):
         self.customer_select_box = ttk.Combobox(self, values=self.customer_names, state="normal")
         self.customer_select_box.grid(row=1, column=0)
         
-        tk.Label(self, text="Selected Customer Info: ").grid(row=2, column=0)
+        tk.Label(self, text="Selected Customer/ Buyer Info: ").grid(row=2, column=0)
         self.customer_info_text = tk.Text(self, height=4, width=30)
         self.customer_info_text.grid(row=3, column=0)
 
         self.filtered_indices = []
         self.customer_select_box.bind('<KeyRelease>', self.filter_combobox)
         self.customer_select_box.bind("<<ComboboxSelected>>", self.update_customer_info)
+
+        tk.Label(self, text="Select Buyer: ").grid(row=0, column=1)
+        self.buyer_select_box = ttk.Combobox(self, state="readonly")
+        self.buyer_select_box.grid(row=1, column=1)
+
+        self.buyer_select_box.bind("<<ComboboxSelected>>", self.update_buyer_info)
 
         tk.Label(self, text="Enter RFQ Number: ").grid(row=4, column=0)
         self.rfq_number_text = tk.Entry(self, width=20)
@@ -86,6 +92,7 @@ class RfqGen(tk.Tk):
    
     def update_customer_info(self, event=None):
         self.customer_info_text.delete(1.0, tk.END)
+        self.buyer_select_box.set("")
         if self.filtered_indices:
             current_index = self.customer_select_box.current()
             selected_customer_index = self.filtered_indices[current_index]
@@ -97,6 +104,15 @@ class RfqGen(tk.Tk):
             self.customer_info_text.insert(tk.END, f"Name: {short_name}\nEmail: {email}")
             self.party_pk = party_pk
         
+        self.update_buyer_combobox()
+    
+    def update_buyer_info(self, event=None):
+        self.customer_info_text.delete(1.0, tk.END)
+        buyer = self.buyer_select_box.get()
+        buyer_fk = self.buyer_dict[buyer]
+        short_name, email = self.data_base_conn.get_buyer_info(buyer_fk)
+        self.customer_info_text.insert(tk.END, f"Name: {short_name}\nEmail: {email}")
+
     def browse_files_parts_requested(self, filetype: str, list_box):
         """ Browse button for Part requested section, filetype only accepts -> "All files", "Excel files" """
         if filetype == "Excel files":
@@ -116,13 +132,21 @@ class RfqGen(tk.Tk):
             print(f"Error during file browse: {e}")
             messagebox.showerror("File Browse Error", "An error occurred during file selection. Please try again.")
     
+    def update_buyer_combobox(self, event=None):
+        self.buyer_dict = self.data_base_conn.get_buyer_data(self.party_pk)
+        self.buyer_select_box['values'] = list(self.buyer_dict.keys())
+    
     def generate_rfq(self, loading_screen):
         """ Main function for generating RFQ """
         if self.customer_select_box.get() and self.file_path_PR_entry.get(0):
             party_pk = self.party_pk
             billing_details, state, country = self.data_base_conn.get_address(party_pk)
             customer_rfq_number = self.rfq_number_text.get()
-            rfq_pk = self.data_base_conn.insert_into_rfq(party_pk, billing_details, state, country, customer_rfq_number=customer_rfq_number)
+            if self.buyer_select_box.get(): 
+                buyer_fk = self.buyer_dict[self.buyer_select_box.get()]
+            else: 
+                buyer_fk = None                
+            rfq_pk = self.data_base_conn.insert_into_rfq(party_pk, billing_details, state, country, customer_rfq_number=customer_rfq_number, buyer_fk= buyer_fk)
             path_dict = {} #dictionary with file path as key and the pk of the document group
             user_selected_file_paths = list(self.file_path_PR_entry.get(0, tk.END) + self.file_path_PL_entry.get(0, tk.END)) #making a list of file paths that user uploaded
             i = 1
@@ -229,12 +253,18 @@ class RfqGen(tk.Tk):
                     ct+=10
             loading_screen.set_progress(100)
             messagebox.showinfo("Success", f"RFQ generated successfully! RFQ Number: {rfq_pk}")
+            self.customer_select_box.set("")
+            self.buyer_select_box.set("")
+            self.customer_info_text.delete(1.0, tk.END)
             self.file_path_PL_entry.delete(0, tk.END)
             self.file_path_PR_entry.delete(0, tk.END)
             self.rfq_number_text.delete(0, tk.END)
         else:
             self.loading_screen.destroy()
             messagebox.showerror("ERROR", "Select Customer/ Upload Parts Requested File")
+            self.customer_select_box.set("")
+            self.buyer_select_box.set("")
+            self.customer_info_text.delete(1.0, tk.END)
             self.file_path_PR_entry.delete(0, tk.END)
             self.file_path_PL_entry.delete(0, tk.END)
             self.rfq_number_text.delete(0, tk.END)

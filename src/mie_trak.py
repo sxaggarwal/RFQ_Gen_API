@@ -15,9 +15,10 @@ class MieTrak:
         self.quote_assembly_table = TableManger("QuoteAssembly")
         self.rfq_line_table = TableManger("RequestForQuoteLine")
         self.rfq_line_qty_table = TableManger("RequestForQuoteLineQuantity")
+        self.party_buyer_table = TableManger("PartyBuyer")
 
     def get_customer_data(self,selected_customer_index=None, names=False):
-        data = self.party_table.get("PartyPK","Name")
+        data = self.party_table.get("PartyPK","Name", Customer=1)
         if names is True:
             customer_names = [d[1] for d in data]
             return customer_names
@@ -31,6 +32,26 @@ class MieTrak:
                 short_name = None
                 email = None
             return short_name, email, party_pk
+    
+    def get_buyer_info(self, buyer_fk):
+        selected_customer_data = self.party_table.get("ShortName", "Email", PartyPK=buyer_fk)
+        if selected_customer_data:
+            short_name, email = selected_customer_data[0]
+        else:
+            short_name = None
+            email = None
+        return short_name, email
+    
+    def get_buyer_data(self, party_pk,):
+        data = self.party_buyer_table.get("BuyerFK", PartyFK=party_pk)
+        my_dict = {}
+        if data:
+            buyer_fk = [d[0] for d in data]
+            if buyer_fk:
+                for fk in buyer_fk:
+                    buyer_name = self.party_table.get("Name", PartyPK=fk)[0][0]
+                    my_dict[buyer_name] = fk
+        return my_dict
     
     def get_address(self, party_fk):
         billing_details = self.address_table.get("AddressPK", "Name", "Address1", "Address2", "AddressAlt", "City", "ZipCode", PartyFK=party_fk)
@@ -55,9 +76,10 @@ class MieTrak:
             country = [(None,),]   
         return billing_details, state, country
     
-    def insert_into_rfq(self, customer_fk, billing_details, state, country, customer_rfq_number = None):
+    def insert_into_rfq(self, customer_fk, billing_details, state, country, customer_rfq_number = None, buyer_fk = None):
         info_dict = {
             "CustomerFK" : customer_fk,
+            "BuyerFK" : buyer_fk,
             "BillingAddressFK": billing_details[0],
             "ShippingAddressFK": billing_details[0],
             "DivisionFK": 1,
