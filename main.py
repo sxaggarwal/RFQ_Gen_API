@@ -12,6 +12,8 @@ class LoadingScreen(tk.Toplevel):
         self.title("Generating RFQ")
         self.geometry("300x100")
         self.protocol("WM_DELETE_WINDOW", self.disable_close_button)
+        self.attributes("-topmost", True)  # Ensure loading screen stays on top
+        self.grab_set()
         self.progressbar = ttk.Progressbar(self, orient="horizontal", length=200, mode="determinate", maximum=max_progress)
         self.progressbar.pack(pady=10)
     
