@@ -25,6 +25,53 @@ class LoadingScreen(tk.Toplevel):
     def disable_close_button(self):
         pass
 
+class AddBuyerScreen(tk.Toplevel):
+    def __init__(self, master, party_pk, party_name):
+        super().__init__(master)
+        self.title(f"Add Buyer for Customer: {party_name}, PartyPK: {party_pk}")
+        self.geometry("500x300")
+        self.attributes("-topmost", True)
+        self.grab_set()
+        tk.Label(self, text="Name: ").grid(row=0, column=0)
+        self.buyer_name_box = tk.Entry(self, width=20)
+        self.buyer_name_box.grid(row=0, column=1)
+        tk.Label(self, text="Short Name: ").grid(row=1, column=0)
+        self.short_name_box = tk.Entry(self, width=20)
+        self.short_name_box.grid(row=1, column=1)
+        tk.Label(self, text="Email: ").grid(row=2, column=0)
+        self.email_id_box = tk.Entry(self, width=20)
+        self.email_id_box.grid(row=2, column=1)
+        tk.Label(self, text="Phone Number: ").grid(row=3, column=0)
+        self.phone_number_box = tk.Entry(self, width=20)
+        self.phone_number_box.grid(row=3,column=1)
+        tk.Label(self, text="Title: ").grid(row=4, column=0)
+        self.title_box = tk.Entry(self, width=20)
+        self.title_box.grid(row=4, column=1)
+        save_button = tk.Button(self, text="Save", command=lambda: self.save_buyer_info(party_pk))
+        save_button.grid(row=5, column=1)
+    
+    def save_buyer_info(self, party_pk):
+        if self.buyer_name_box.get():
+            buyer_info_dict = {
+                "Name" : self.buyer_name_box.get(),
+                "Email": self.email_id_box.get(),
+                "Phone": self.phone_number_box.get(),
+                "ShortName": self.short_name_box.get(),
+                "Title": self.title_box.get(),
+                "Buyer": 1,
+                "HardwareCertificationFK": 1,
+                "MaterialCertificationFK": 1,
+                "OutsideProcessingCertificationFK": 1,
+                "QualityLevelFK": 2,
+                "KeepDocumentOnFile": 1,
+                "FirstArticleFK": 1
+            }
+            buyer_pk = MieTrak().create_buyer(buyer_info_dict, party_pk)
+            messagebox.showinfo("Success", f"Buyer created successfully! BuyerPK: {buyer_pk}")
+            self.destroy()
+        else:
+            messagebox.showerror("ERROR", "Please Enter Name")
+
 class RfqGen(tk.Tk):
     def __init__(self):
         super().__init__()
@@ -59,6 +106,9 @@ class RfqGen(tk.Tk):
         self.buyer_select_box = ttk.Combobox(self, state="readonly")
         self.buyer_select_box.grid(row=1, column=1)
 
+        add_buyer_button = tk.Button(self, text="ADD Buyer", command=self.open_add_buyer_screen)
+        add_buyer_button.grid(row=2, column=1)
+
         self.buyer_select_box.bind("<<ComboboxSelected>>", self.update_buyer_info)
 
         tk.Label(self, text="Enter RFQ Number: ").grid(row=4, column=0)
@@ -89,7 +139,15 @@ class RfqGen(tk.Tk):
     def generate_rfq_with_loading_screen(self):
         self.loading_screen = LoadingScreen(self, max_progress=100)
         Thread(target=self.generate_rfq, args=(self.loading_screen,)).start()  # Start RFQ generation in a separate thread
-   
+    
+    def open_add_buyer_screen(self):
+        if self.customer_select_box.get():
+            party_pk = self.party_pk
+            name = self.customer_select_box.get()
+            AddBuyerScreen(self, party_pk, name)
+        else:
+            messagebox.showerror("ERROR", "First Select Customer")
+
     def update_customer_info(self, event=None):
         self.customer_info_text.delete(1.0, tk.END)
         self.buyer_select_box.set("")

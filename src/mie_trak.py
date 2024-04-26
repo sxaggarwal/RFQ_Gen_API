@@ -338,6 +338,16 @@ class MieTrak:
         else:
             self.item_table.update(item_pk, StockLength=values[0], Thickness=values[1], StockWidth=values[2], Weight=values[3], DrawingNumber=values[4], DrawingRevision=values[5], Revision=values[6], PartLength=values[0], PartWidth=values[2], VendorPartNumber=part_number)
 
+    def create_buyer(self, info_dict, customer_pk):
+        """ """
+        buyer_pk = self.party_table.insert(info_dict)
+        my_dict = {
+            "PartyFK": customer_pk,
+            "BuyerFK": buyer_pk,
+        }
+        self.party_buyer_table.insert(my_dict)
+        return buyer_pk
+
 if __name__=="__main__":
     m = MieTrak()
     print(m.quote_operation_template())
