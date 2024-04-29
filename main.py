@@ -89,6 +89,12 @@ class RfqGen(tk.Tk):
         self.filtered_indices = [idx for idx, name in enumerate(self.customer_names) if name in filtered_values]
         self.customer_select_box['values'] = filtered_values
     
+    def filter_buyer_box(self, event):
+        current_text = self.buyer_select_box.get().lower()
+        self.buyer_select_box['values'] = ()
+        filtered_values = [name for name in list(self.buyer_dict.keys()) if name.lower().startswith(current_text)]
+        self.buyer_select_box['values'] = filtered_values
+    
     def make_combobox(self):
         tk.Label(self, text="Select Customer: ").grid(row=0, column=0)
         self.customer_select_box = ttk.Combobox(self, values=self.customer_names, state="normal")
@@ -103,8 +109,10 @@ class RfqGen(tk.Tk):
         self.customer_select_box.bind("<<ComboboxSelected>>", self.update_customer_info)
 
         tk.Label(self, text="Select Buyer: ").grid(row=0, column=1)
-        self.buyer_select_box = ttk.Combobox(self, state="readonly")
+        self.buyer_select_box = ttk.Combobox(self, state="normal")
         self.buyer_select_box.grid(row=1, column=1)
+
+        self.buyer_select_box.bind('<KeyRelease>', self.filter_buyer_box)
 
         add_buyer_button = tk.Button(self, text="ADD Buyer", command=self.open_add_buyer_screen)
         add_buyer_button.grid(row=2, column=1)

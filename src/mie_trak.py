@@ -348,6 +348,3 @@ class MieTrak:
         self.party_buyer_table.insert(my_dict)
         return buyer_pk
 
-if __name__=="__main__":
-    m = MieTrak()
-    print(m.quote_operation_template())
