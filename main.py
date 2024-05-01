@@ -317,6 +317,8 @@ class RfqGen(tk.Tk):
                 loading_screen.set_progress(ct)
                 if ct<100:
                     ct+=10
+            for value in quote_pk_dict.values():
+                self.data_base_conn.create_quote_assembly_formula_variable(value)
             loading_screen.set_progress(100)
             messagebox.showinfo("Success", f"RFQ generated successfully! RFQ Number: {rfq_pk}")
             self.customer_select_box.set("")

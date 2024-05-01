@@ -16,6 +16,7 @@ class MieTrak:
         self.rfq_line_table = TableManger("RequestForQuoteLine")
         self.rfq_line_qty_table = TableManger("RequestForQuoteLineQuantity")
         self.party_buyer_table = TableManger("PartyBuyer")
+        self.quote_assembly_formula_variable_table = TableManger("QuoteAssemblyFormulaVariable")
 
     def get_customer_data(self,selected_customer_index=None, names=False):
         data = self.party_table.get("PartyPK","Name", Customer=1)
@@ -347,4 +348,23 @@ class MieTrak:
         }
         self.party_buyer_table.insert(my_dict)
         return buyer_pk
+    
+    def create_quote_assembly_formula_variable(self, quote_pk):
+        temp = self.quote_assembly_table.get("QuoteAssemblyPK", "SetupFormulaFK", "RunFormulaFK", "OperationFK", QuoteFK=quote_pk)
+        for a,b,c,d in temp:
+            if d:
+                dict_1 = {
+                    "QuoteAssemblyFK" : a,
+                    "OperationFormulaVariableFK": b,
+                    "FormulaType": 0,
+                    "VariableValue": 0.000,
+                }
+                dict_2 = {
+                    "QuoteAssemblyFK" : a,
+                    "OperationFormulaVariableFK": c,
+                    "FormulaType": 1,
+                    "VariableValue": 0.000,
+                }
+                self.quote_assembly_formula_variable_table.insert(dict_1)
+                self.quote_assembly_formula_variable_table.insert(dict_2)
 
