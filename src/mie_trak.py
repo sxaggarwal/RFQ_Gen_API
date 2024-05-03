@@ -77,7 +77,7 @@ class MieTrak:
             country = [(None,),]   
         return billing_details, state, country
     
-    def insert_into_rfq(self, customer_fk, billing_details, state, country, customer_rfq_number = None, buyer_fk = None):
+    def insert_into_rfq(self, customer_fk, billing_details, state, country, customer_rfq_number = None, buyer_fk = None, inquiry_date=None, due_date=None, create_date=None):
         info_dict = {
             "CustomerFK" : customer_fk,
             "BuyerFK" : buyer_fk,
@@ -107,6 +107,9 @@ class MieTrak:
             "ShippingAddressStateDescription": state[0][0],
             "ShippingAddressCountryDescription": country[0][0], 
             "CustomerRequestForQuoteNumber": customer_rfq_number,
+            "InquiryDate": inquiry_date,
+            "DueDate": due_date,
+            "CreateDate": create_date,
         }
         rfq_pk = self.request_for_quote_table.insert(info_dict)
         return rfq_pk
@@ -367,4 +370,43 @@ class MieTrak:
                 }
                 self.quote_assembly_formula_variable_table.insert(dict_1)
                 self.quote_assembly_formula_variable_table.insert(dict_2)
+    
+    def create_item(self, part_number, partyfk, stock_width, stock_length, thickness, weight, item_type_fk=1, mps_item=1, purchase=1, forecast_on_mrp=1, mps_on_mrp=1, service_item=1, unit_of_measure_set_fk=1, vendor_unit=1.0, manufactured_item=0, calculation_type_fk=1, inventoriable=1, purchase_order_comment=None,  description=None, comment=None, only_create=None, bulk_ship=1, ship_loose=1, cert_reqd_by_supplier=0, can_not_create_work_order=0, can_not_invoice=0, general_ledger_account_fk=100, purchase_account_fk=116, cogs_acc_fk=116):
+        inventory_info_dict = {
+                "QuantityOnHand": 0.000,
+            }
+        item_inventory_pk = self.item_inventory_table.insert(inventory_info_dict)
+        item_info_dict = {
+            "ItemInventoryFK" : item_inventory_pk, 
+            "PartyFK" : partyfk,
+            "PartNumber": part_number, 
+            "ItemTypeFK": item_type_fk, 
+            "Description" : description, 
+            "Comment": comment, 
+            "MPSItem": mps_item,
+            "Purchase": purchase, 
+            "ForecastOnMRP": forecast_on_mrp, 
+            "MPSOnMRP": mps_on_mrp, 
+            "ServiceItem": service_item, 
+            "PurchaseOrderComment": purchase_order_comment, 
+            "UnitOfMeasureSetFK": unit_of_measure_set_fk,
+            "VendorUnit": vendor_unit, 
+            "ManufacturedItem": manufactured_item, 
+            "CalculationTypeFK": calculation_type_fk, 
+            "Inventoriable": inventoriable, 
+            "BulkShip": bulk_ship, 
+            "ShipLoose": ship_loose,
+            "CertificationsRequiredBySupplier": cert_reqd_by_supplier,
+            "CanNotCreateWorkOrder": can_not_create_work_order,
+            "CanNotInvoice": can_not_invoice,
+            "GeneralLedgerAccountFK": general_ledger_account_fk,
+            "PurchaseGeneralLedgerAccountFK" : purchase_account_fk,
+            "SalesCogsAccountFK": cogs_acc_fk,
+            "StockWidth": stock_width,
+            "StockLength": stock_length,
+            "Weight": weight,
+            "Thickness": thickness,
+        }
+        item_pk = self.item_table.insert(item_info_dict)
+        return item_pk
 

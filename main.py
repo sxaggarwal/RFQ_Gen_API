@@ -1,10 +1,12 @@
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
+from tkcalendar import Calendar
 from threading import Thread
 from src.general_class import TableManger
 from src.mie_trak import MieTrak
 from src.helper import create_dict_from_excel, transfer_file_to_folder, pk_info_dict
 import os
+import datetime
 
 class LoadingScreen(tk.Toplevel):
     def __init__(self, master, max_progress):
@@ -76,7 +78,7 @@ class RfqGen(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("RFQGen")
-        self.geometry("500x415")
+        self.geometry("500x425")
         self.data_base_conn = MieTrak()
         self.customer_names = self.data_base_conn.get_customer_data(names=True)
         self.quote_assembly_table = TableManger("QuoteAssembly")
@@ -119,7 +121,7 @@ class RfqGen(tk.Tk):
 
         self.buyer_select_box.bind("<<ComboboxSelected>>", self.update_buyer_info)
 
-        tk.Label(self, text="Enter RFQ Number: ").grid(row=4, column=0)
+        tk.Label(self, text="Enter Customer RFQ Number: ").grid(row=4, column=0)
         self.rfq_number_text = tk.Entry(self, width=20)
         self.rfq_number_text.grid(row=5, column=0)
 
@@ -143,6 +145,51 @@ class RfqGen(tk.Tk):
 
         generate_button = tk.Button(self, text="Generate RFQ", command=self.generate_rfq_with_loading_screen)
         generate_button.grid(row=13, column=0)
+
+        add_item_button = tk.Button(self, text="ADD Item", command=self.add_item)
+        add_item_button.grid(row=14, column=0)
+
+        tk.Label(self, text="Enter Inquiry Date (MM/DD/YYYY): ").grid(row=3, column=1)
+        self.inquiry_date_box = tk.Entry(self, width=20)
+        self.inquiry_date_box.grid(row=4, column=1)
+        cal_button = tk.Button(self, text='Cal', command=self.open_calendar)
+        cal_button.grid(row=5, column=1)
+
+        tk.Label(self, text="Enter Due Date (MM/DD/YYYY): ").grid(row=6, column=1)
+        self.due_date_box = tk.Entry(self, width=20)
+        self.due_date_box.grid(row=7, column=1)
+        cal_due_button = tk.Button(self, text='Cal', command=self.open_due_calendar)
+        cal_due_button.grid(row=8, column=1)
+    
+    def open_calendar(self):
+        top = tk.Toplevel(self)
+        top.grab_set()
+        self.inq_cal = Calendar(top, selectmode="day", date_pattern="mm/dd/y")
+        self.inq_cal.pack(padx=20, pady=20)
+
+        btn = tk.Button(top, text="Get Selected Date", command=self.get_selected_inquiry_date)
+        btn.pack(pady=10)
+    
+    def get_selected_inquiry_date(self):
+        selected_date = self.inq_cal.get_date()
+        self.inquiry_date_box.delete(0, tk.END)
+        self.inquiry_date_box.insert(tk.END, selected_date)
+        self.inq_cal.master.destroy()
+    
+    def open_due_calendar(self):
+        top = tk.Toplevel(self)
+        top.grab_set()
+        self.due_cal = Calendar(top, selectmode="day", date_pattern="mm/dd/y")
+        self.due_cal.pack(padx=20, pady=20)
+
+        btn = tk.Button(top, text="Get Selected Date", command=self.get_selected_due_date)
+        btn.pack(pady=10)
+    
+    def get_selected_due_date(self):
+        selected_date = self.due_cal.get_date()
+        self.due_date_box.delete(0, tk.END)
+        self.due_date_box.insert(tk.END, selected_date)
+        self.due_cal.master.destroy()
     
     def generate_rfq_with_loading_screen(self):
         self.loading_screen = LoadingScreen(self, max_progress=100)
@@ -208,11 +255,28 @@ class RfqGen(tk.Tk):
             party_pk = self.party_pk
             billing_details, state, country = self.data_base_conn.get_address(party_pk)
             customer_rfq_number = self.rfq_number_text.get()
+            inquiry_date = self.inquiry_date_box.get()
+            due_date = self.due_date_box.get()
+            current_date = datetime.date.today()
+            if current_date:
+                formatted_date = current_date.strftime("%m-%d-%Y")
+                current_date_formatted = f"{formatted_date} 12:00:00 AM"
+            else:
+                current_date_formatted = None
+            if inquiry_date:
+                inq_date = f"{inquiry_date} 12:00:00 AM"
+            else:
+                inq_date = None
+            
+            if due_date:
+                due_date_formated = f"{due_date} 12:00:00 AM"
+            else:
+                due_date_formated = None
             if self.buyer_select_box.get(): 
                 buyer_fk = self.buyer_dict[self.buyer_select_box.get()]
             else: 
                 buyer_fk = None                
-            rfq_pk = self.data_base_conn.insert_into_rfq(party_pk, billing_details, state, country, customer_rfq_number=customer_rfq_number, buyer_fk= buyer_fk)
+            rfq_pk = self.data_base_conn.insert_into_rfq(party_pk, billing_details, state, country, customer_rfq_number=customer_rfq_number, buyer_fk= buyer_fk, inquiry_date=inq_date, due_date=due_date_formated, create_date=current_date_formatted)
             path_dict = {} #dictionary with file path as key and the pk of the document group
             user_selected_file_paths = list(self.file_path_PR_entry.get(0, tk.END) + self.file_path_PL_entry.get(0, tk.END)) #making a list of file paths that user uploaded
             i = 1
@@ -327,6 +391,8 @@ class RfqGen(tk.Tk):
             self.file_path_PL_entry.delete(0, tk.END)
             self.file_path_PR_entry.delete(0, tk.END)
             self.rfq_number_text.delete(0, tk.END)
+            self.inquiry_date_box.delete(0, tk.END)
+            self.due_date_box.delete(0, tk.END)
         else:
             self.loading_screen.destroy()
             messagebox.showerror("ERROR", "Select Customer/ Upload Parts Requested File")
@@ -336,7 +402,62 @@ class RfqGen(tk.Tk):
             self.file_path_PR_entry.delete(0, tk.END)
             self.file_path_PL_entry.delete(0, tk.END)
             self.rfq_number_text.delete(0, tk.END)
+            self.inquiry_date_box.delete(0, tk.END)
+            self.due_date_box.delete(0, tk.END)
 
+    def add_item(self):
+        if self.customer_select_box.get() and self.file_path_PR_entry.get(0):
+            party_pk = self.party_pk
+            user_selected_file_paths = list(self.file_path_PR_entry.get(0, tk.END) + self.file_path_PL_entry.get(0, tk.END))
+            info_dict = create_dict_from_excel(self.file_path_PR_entry.get(0, tk.END)[0])
+            path_dict = {}
+            restricted = False
+            for key, value in info_dict.items():
+                if self.itar_restricted_var.get(): # checking if the user clicked on Restricted box or not and based on that destination path is decided
+                    destination_path = rf'y:\PDM\Restricted\{self.customer_select_box.get()}\{key}'
+                    restricted = True
+                else:
+                    destination_path = rf'y:\PDM\Non-restricted\{self.customer_select_box.get()}\{key}'
+                
+                for file in user_selected_file_paths:
+                    # folder is get or created and file is copied to this folder
+                    file_path_to_add_to_rfq = transfer_file_to_folder(destination_path, file)
+                    path = file_path_to_add_to_rfq.lower()
+                    if "_pl_" in path or "spdl" in path or "psdl" in path or "pl" in os.path.basename(path):
+                        path_dict[file_path_to_add_to_rfq] = 26
+                    elif "dwg" in path or "drw" in path:
+                        path_dict[file_path_to_add_to_rfq] = 27
+                    elif "step" in path or "stp" in path:
+                        path_dict[file_path_to_add_to_rfq] = 30
+                    elif "zsp" in path or "speco" in path:
+                        path_dict[file_path_to_add_to_rfq] = 33
+                    elif ".cat" in path:
+                        path_dict[file_path_to_add_to_rfq] = 16
+                    else:
+                        path_dict[file_path_to_add_to_rfq] = None
+                
+                item_pk = self.data_base_conn.create_item(key, party_pk, value[3] , value[1], value[2], value[4])
+                matching_paths = {path:pk for path,pk in path_dict.items() if key in path}
+                for url, pk in matching_paths.items():
+                    if restricted:
+                        self.data_base_conn.upload_documents(url, item_fk=item_pk, document_type_fk=2, secure_document=1, document_group_pk=pk)
+                    else:
+                        self.data_base_conn.upload_documents(url, item_fk=item_pk, document_type_fk=2, document_group_pk=pk)
+            messagebox.showinfo("Success", "Item added successfully!")
+            self.customer_select_box.set("")
+            self.buyer_select_box.set("")
+            self.customer_info_text.delete(1.0, tk.END)
+            self.file_path_PL_entry.delete(0, tk.END)
+            self.file_path_PR_entry.delete(0, tk.END)
+            self.rfq_number_text.delete(0, tk.END)
+        else:
+            messagebox.showerror("ERROR", "Select Customer/ Upload Parts Requested File")
+            self.customer_select_box.set("")
+            self.buyer_select_box.set("")
+            self.customer_info_text.delete(1.0, tk.END)
+            self.file_path_PR_entry.delete(0, tk.END)
+            self.file_path_PL_entry.delete(0, tk.END)
+            self.rfq_number_text.delete(0, tk.END)
 
 if __name__ == "__main__":
     r = RfqGen()
