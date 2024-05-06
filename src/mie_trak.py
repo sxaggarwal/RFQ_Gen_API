@@ -1,3 +1,4 @@
+import os
 from src.general_class import TableManger
 from src.schema import _get_schema
 
@@ -189,19 +190,25 @@ class MieTrak:
     def upload_documents(self, document_path: str, rfq_fk=None, item_fk=None, document_type_fk=None, secure_document=0, document_group_pk=None, print_with_purchase_order=None):
         if not rfq_fk and not item_fk:
             raise TypeError("Both values can not be None")
-
-        # val = rfq_fk if item_fk is None else item_fk
-        doc_dict = {
-            "URL": document_path,
-            "RequestForQuoteFK": rfq_fk,
-            "ItemFK": item_fk, 
-            "Active": 1, 
-            "DocumentTypeFK": document_type_fk, 
-            "SecureDocument": secure_document, 
-            "DocumentGroupFK": document_group_pk, 
-            "PrintWithPurchaseOrder": print_with_purchase_order
-        }
-        self.document_table.insert(doc_dict)
+        found = False
+        if item_fk:
+            paths = self.document_table.get("URL", ItemFK=item_fk)
+            if paths: 
+                for path in paths:
+                    if os.path.normpath(path[0]) == os.path.normpath(document_path):
+                        found = True 
+        if not found:
+            doc_dict = {
+                "URL": document_path,
+                "RequestForQuoteFK": rfq_fk,
+                "ItemFK": item_fk, 
+                "Active": 1, 
+                "DocumentTypeFK": document_type_fk, 
+                "SecureDocument": secure_document, 
+                "DocumentGroupFK": document_group_pk, 
+                "PrintWithPurchaseOrder": print_with_purchase_order
+            }
+            self.document_table.insert(doc_dict)
     
     def create_quote(self, customer_fk, item_fk, quote_type, part_number):
         info_dict = {

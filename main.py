@@ -167,10 +167,12 @@ class RfqGen(tk.Tk):
         self.inq_cal = Calendar(top, selectmode="day", date_pattern="mm/dd/y")
         self.inq_cal.pack(padx=20, pady=20)
 
+        top.bind('<Double-1>', self.get_selected_inquiry_date)
+
         btn = tk.Button(top, text="Get Selected Date", command=self.get_selected_inquiry_date)
         btn.pack(pady=10)
     
-    def get_selected_inquiry_date(self):
+    def get_selected_inquiry_date(self, event=None):
         selected_date = self.inq_cal.get_date()
         self.inquiry_date_box.delete(0, tk.END)
         self.inquiry_date_box.insert(tk.END, selected_date)
@@ -182,10 +184,12 @@ class RfqGen(tk.Tk):
         self.due_cal = Calendar(top, selectmode="day", date_pattern="mm/dd/y")
         self.due_cal.pack(padx=20, pady=20)
 
+        top.bind('<Double-1>', self.get_selected_due_date)
+
         btn = tk.Button(top, text="Get Selected Date", command=self.get_selected_due_date)
         btn.pack(pady=10)
     
-    def get_selected_due_date(self):
+    def get_selected_due_date(self, event=None):
         selected_date = self.due_cal.get_date()
         self.due_date_box.delete(0, tk.END)
         self.due_date_box.insert(tk.END, selected_date)
@@ -433,6 +437,10 @@ class RfqGen(tk.Tk):
                         path_dict[file_path_to_add_to_rfq] = 33
                     elif ".cat" in path:
                         path_dict[file_path_to_add_to_rfq] = 16
+                    elif "prt" in path:
+                        path_dict[file_path_to_add_to_rfq] = 17
+                    elif "lwg" in path:
+                        path_dict[file_path_to_add_to_rfq] = 29
                     else:
                         path_dict[file_path_to_add_to_rfq] = None
                 

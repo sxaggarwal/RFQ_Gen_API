@@ -77,7 +77,7 @@ def pk_info_dict(info_dict):
                 mat_pk = pk
         
         if value[6]:
-            result = item_table.get("ItemPK", PartNumber=value[6])
+            result = item_table.get("ItemPK", PartNumber=f"{key} - OP Finish")
             if result: 
                 fin_pk = result[0][0]
             else:
@@ -85,8 +85,12 @@ def pk_info_dict(info_dict):
                 fin_pk = pk
         
         if value[7]:
-            pk = m.get_or_create_item(part_number=f"{key} - OP HT", item_type_fk=5, description= value[7], comment= value[7], purchase_order_comment= value[7], inventoriable= 0, only_create=1, cert_reqd_by_supplier=1, can_not_create_work_order=1, can_not_invoice=1, purchase_account_fk=125, cogs_acc_fk=125, calculation_type_fk=17)
-            ht_pk = pk
+            result = item_table.get("ItemPK", PartNumber=f"{key} - OP HT")
+            if result: 
+                ht_pk = result[0][0]
+            else:
+                pk = m.get_or_create_item(part_number=f"{key} - OP HT", item_type_fk=5, description= value[7], comment= value[7], purchase_order_comment= value[7], inventoriable= 0, only_create=1, cert_reqd_by_supplier=1, can_not_create_work_order=1, can_not_invoice=1, purchase_account_fk=125, cogs_acc_fk=125, calculation_type_fk=17)
+                ht_pk = pk
         my_dict[key] = (mat_pk, ht_pk, fin_pk)
     return my_dict
           
