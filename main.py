@@ -4,7 +4,7 @@ from tkcalendar import Calendar
 from threading import Thread
 from src.general_class import TableManger
 from src.mie_trak import MieTrak
-from src.helper import create_dict_from_excel, transfer_file_to_folder, pk_info_dict
+from src.helper import create_dict_from_excel, transfer_file_to_folder, pk_info_dict, check_and_create_tooling
 import os
 import datetime
 
@@ -379,11 +379,12 @@ class RfqGen(tk.Tk):
                     part_num = value[12]
                     fk = quote_pk_dict.get(part_num)
                     quote_assembly_pk = self.quote_assembly_table.get("QuoteAssemblyPK", QuoteFK=fk, SequenceNumber=24)
-                    item_fk = self.data_base_conn.get_or_create_item(key, item_type_fk=3, description=value[0], calculation_type_fk=12, purchase_account_fk=130, cogs_acc_fk=130, mps_item=0, forecast_on_mrp=0,mps_on_mrp=0,service_item=0,ship_loose=0,bulk_ship=0)
+                    # item_fk = self.data_base_conn.get_or_create_item(key, item_type_fk=3, description=value[0], calculation_type_fk=12, purchase_account_fk=130, cogs_acc_fk=130, mps_item=0, forecast_on_mrp=0,mps_on_mrp=0,service_item=0,ship_loose=0,bulk_ship=0)
+                    item_fk = check_and_create_tooling(value[0])
                     self.data_base_conn.create_bom_quote(fk, item_fk, quote_assembly_pk[0][0], 24, y)
                     y+=1
                 loading_screen.set_progress(ct)
-                if ct<100:
+                if ct<90:
                     ct+=10
             for value in quote_pk_dict.values():
                 self.data_base_conn.create_quote_assembly_formula_variable(value)

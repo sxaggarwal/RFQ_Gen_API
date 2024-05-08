@@ -1,5 +1,6 @@
 from src.general_class import TableManger
 from src.mie_trak import MieTrak
+from src.connection import get_connection
 import os
 import shutil
 import math
@@ -38,9 +39,10 @@ def create_dict_from_excel(filepath):
     assy_for = extract_from_excel(filepath, "AssyFor")
     hardware_or_supplies = extract_from_excel(filepath, "Hardware/Supplies")
     my_dict = {}
+    p = 1
 
     for a,b,c,d,e,f,g,h,i,j,k,l,m,n,o in zip(part_number,description,length,thickness,width,weight,material,finish_code,heat_treat,drawing_number,drawing_revision,qty_reqd,pl_rev,assy_for, hardware_or_supplies):  # noqa: E741
-        a = None if isinstance(a, float) and math.isnan(a) else a 
+        a = f"Tool - {p}" if isinstance(a, float) and math.isnan(a) else a 
         b = None if isinstance(b, float) and math.isnan(b) else b
         c = 0.00 if isinstance(c, float) and math.isnan(c) else c
         d = 0.00 if isinstance(d, float) and math.isnan(d) else d
@@ -55,8 +57,9 @@ def create_dict_from_excel(filepath):
         m = None if isinstance(m, float) and math.isnan(m) else m
         n = None if isinstance(n, float) and math.isnan(n) else n
         o = None if isinstance(o, float) and math.isnan(o) else o
-
+        p+=1
         my_dict[a] = (b,c,d,e,f,g,h,i,j,k,l,m,n,o)
+        print(my_dict)
     
     return my_dict
 
@@ -93,4 +96,30 @@ def pk_info_dict(info_dict):
                 ht_pk = pk
         my_dict[key] = (mat_pk, ht_pk, fin_pk)
     return my_dict
+
+def check_and_create_tooling(user_des):
+    tool_pk = None
+    m = MieTrak()
+    numbers= []
+    query1 = f"Select ItemPK from Item Where Description='{user_des}' AND PartNumber LIKE '05-%'"
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(query1)
+        result1 = cursor.fetchone()
+    if result1:
+        tool_pk = result1[0]
+
+    if tool_pk is None:
+        query = "Select PartNumber from Item Where PartNumber LIKE '05-%' AND PartNumber LIKE '%[0-9]'"
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(query)
+            result = cursor.fetchall() 
+        for part in result:    
+            number_str = part[0].split('05-')[1]
+            number = int(number_str)
+            numbers.append(number)
+        tool_pk = m.get_or_create_item(part_number=f"05-{max(numbers)+1}", description=user_des, only_create=1,calculation_type_fk=12, purchase_account_fk=130, cogs_acc_fk=130, mps_item=0, forecast_on_mrp=0,mps_on_mrp=0,service_item=0,ship_loose=0,bulk_ship=0, cert_reqd_by_supplier=1)
+   
+    return tool_pk
           
