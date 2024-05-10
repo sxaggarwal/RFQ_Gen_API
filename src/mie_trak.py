@@ -17,7 +17,9 @@ class MieTrak:
         self.rfq_line_table = TableManger("RequestForQuoteLine")
         self.rfq_line_qty_table = TableManger("RequestForQuoteLineQuantity")
         self.party_buyer_table = TableManger("PartyBuyer")
+        self.router_table = TableManger("Router")
         self.quote_assembly_formula_variable_table = TableManger("QuoteAssemblyFormulaVariable")
+        self.router_work_center_table = TableManger("RouterWorkCenter")
 
     def get_customer_data(self,selected_customer_index=None, names=False):
         data = self.party_table.get("PartyPK","Name", Customer=1)
@@ -416,4 +418,33 @@ class MieTrak:
         }
         item_pk = self.item_table.insert(item_info_dict)
         return item_pk
-
+    
+    # Update: May10
+    def create_router(self, item_fk, part_number, division_fk=1, router_status_fk=2, router_type=0, default_router=1):
+        router_dict = {
+            "ItemFK": item_fk,
+            "RouterStatusFK": router_status_fk,
+            "RouterType": router_type,
+            "DefaultRouter": default_router,
+            "PartNumber": part_number,
+            "DivisionFK": division_fk,
+        }
+        router_pk = self.router_table.insert(router_dict)
+        return router_pk
+    
+    def create_router_work_center(self, item_fk, router_fk, order_by, unit_of_measure_set_fk=1, sequence_number=1, parts_per_blank=1.00, parts_reqd = 1.000, qty_reqd= 1.000, qty_per_inv = 1, min_per_part=0, vend_unit= 1.00, setup_time=0.00):
+        router_work_center_dict = {
+            "ItemFK": item_fk,
+            "RouterFK": router_fk,
+            "OrderBy": order_by,
+            "UnitOfMeasureSetFK": unit_of_measure_set_fk,
+            "SequenceNumber": sequence_number,
+            "PartsPerBlank": parts_per_blank,
+            "PartsRequired": parts_reqd,
+            "QuantityRequired": qty_reqd,
+            "QuantityPerInverse": qty_per_inv,
+            "MinutesPerPart": min_per_part,
+            "VendorUnit": vend_unit,
+            "SetupTime": setup_time,
+        }
+        self.router_work_center_table.insert(router_work_center_dict)

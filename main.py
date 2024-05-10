@@ -350,6 +350,12 @@ class RfqGen(tk.Tk):
                             if j is not None:
                                 self.data_base_conn.create_bom_quote(quote_pk, j, k, l, y, part_length=value[1], part_width=value[3], thickness=value[2])
                                 y+=1
+                        # Update: May10
+                        if dict_values[2]:
+                            op_finish_pk = dict_values[2]
+                            op_part_number = f"{key} - OP Finish"
+                            finish_description = value[6]
+                            self.create_finish_router(finish_description, op_finish_pk, op_part_number)
                     
                     if value[12] is None:
                         rfq_line_pk = self.data_base_conn.create_rfq_line_item(item_pk, rfq_pk, i, quote_pk, quantity=value[10])
@@ -409,6 +415,20 @@ class RfqGen(tk.Tk):
             self.rfq_number_text.delete(0, tk.END)
             self.inquiry_date_box.delete(0, tk.END)
             self.due_date_box.delete(0, tk.END)
+    
+    # Update: May10
+    def create_finish_router(self, finish_description, item_fin_pk, part_num):
+        finish_code = finish_description.split('\n')
+        finish_pks = []
+        i=1
+        if finish_code:
+            for code in finish_code:
+                finish_codes_pk = self.data_base_conn.get_or_create_item(part_number=code, description=code, inventoriable=0, item_type_fk=5, cert_reqd_by_supplier=1, can_not_create_work_order=1, can_not_invoice=1, purchase_account_fk=125, cogs_acc_fk=125, calculation_type_fk=17)
+                finish_pks.append(finish_codes_pk)
+        router_pk = self.data_base_conn.create_router(item_fin_pk, part_num)
+        for pk in finish_pks:
+            self.data_base_conn.create_router_work_center(pk, router_pk, i)
+            i+=1
 
     def add_item(self):
         if self.customer_select_box.get() and self.file_path_PR_entry.get(0):
