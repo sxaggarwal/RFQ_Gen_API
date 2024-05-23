@@ -367,7 +367,7 @@ class RfqGen(tk.Tk):
                         self.data_base_conn.create_assy_quote(quote_pk, fk, qty_req=value[10])
                     
                     if key in info_dict:
-                        dict_values = [value[1], value[2], value[3], value[4], value[8], value[9], value[11]]
+                        dict_values = [value[1], value[2], value[3], value[4], value[8], value[9], value[11], value[14], value[15]]
                         self.data_base_conn.insert_part_details_in_item(item_pk, key, dict_values)
                         pk_value = my_dict[key]
                         for j in pk_value[1:]:
@@ -384,11 +384,17 @@ class RfqGen(tk.Tk):
                 else:
                     part_num = value[12]
                     fk = quote_pk_dict.get(part_num)
-                    quote_assembly_pk = self.quote_assembly_table.get("QuoteAssemblyPK", QuoteFK=fk, SequenceNumber=24)
-                    # item_fk = self.data_base_conn.get_or_create_item(key, item_type_fk=3, description=value[0], calculation_type_fk=12, purchase_account_fk=130, cogs_acc_fk=130, mps_item=0, forecast_on_mrp=0,mps_on_mrp=0,service_item=0,ship_loose=0,bulk_ship=0)
-                    item_fk = check_and_create_tooling(value[0])
-                    self.data_base_conn.create_bom_quote(fk, item_fk, quote_assembly_pk[0][0], 24, y)
-                    y+=1
+                    if value[13] == "Hardware":
+                        quote_assembly_pk = self.quote_assembly_table.get("QuoteAssemblyPK", QuoteFK=fk, SequenceNumber=24)
+                        # item_fk = self.data_base_conn.get_or_create_item(key, item_type_fk=3, description=value[0], calculation_type_fk=12, purchase_account_fk=130, cogs_acc_fk=130, mps_item=0, forecast_on_mrp=0,mps_on_mrp=0,service_item=0,ship_loose=0,bulk_ship=0)
+                        item_fk = check_and_create_tooling(value[0])
+                        self.data_base_conn.create_bom_quote(fk, item_fk, quote_assembly_pk[0][0], 24, y)
+                        y+=1
+                    elif value[13] == "Tooling":
+                        quote_assembly_pk = self.quote_assembly_table.get("QuoteAssemblyPK", QuoteFK=fk, SequenceNumber=8)
+                        item_fk = self.data_base_conn.get_or_create_item(key, description=value[0], item_type_fk=7, mps_item=0, forecast_on_mrp=0, mps_on_mrp=0, service_item=0, ship_loose=0, bulk_ship=0)
+                        self.data_base_conn.create_bom_quote(fk, item_fk, quote_assembly_pk[0][0], 8, y)
+                        y+=1
                 loading_screen.set_progress(ct)
                 if ct<90:
                     ct+=10
@@ -465,7 +471,7 @@ class RfqGen(tk.Tk):
                     else:
                         path_dict[file_path_to_add_to_rfq] = None
                 
-                item_pk = self.data_base_conn.create_item(key, party_pk, value[3] , value[1], value[2], value[4])
+                item_pk = self.data_base_conn.create_item(key, party_pk, value[15] , value[14], value[2], value[4])
                 matching_paths = {path:pk for path,pk in path_dict.items() if key in path}
                 for url, pk in matching_paths.items():
                     if restricted:

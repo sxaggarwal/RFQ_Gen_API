@@ -25,9 +25,9 @@ def extract_from_excel(filepath, column_name):
 def create_dict_from_excel(filepath):
     part_number = extract_from_excel(filepath, "Part")
     description = extract_from_excel(filepath, "DESCRIPTION")
-    length = extract_from_excel(filepath, "Length")
+    length = extract_from_excel(filepath, "PartLength")
     thickness = extract_from_excel(filepath, "Thickness")
-    width = extract_from_excel(filepath, "Width")
+    width = extract_from_excel(filepath, "PartWidth")
     weight = extract_from_excel(filepath, "Weight")
     material = extract_from_excel(filepath, "Material")
     finish_code = extract_from_excel(filepath, "FinishCode")
@@ -37,11 +37,14 @@ def create_dict_from_excel(filepath):
     qty_reqd = extract_from_excel(filepath, "QuantityRequired")
     pl_rev = extract_from_excel(filepath, "PLRevision")
     assy_for = extract_from_excel(filepath, "AssyFor")
-    hardware_or_supplies = extract_from_excel(filepath, "Hardware/Supplies")
+    hardware_or_supplies = extract_from_excel(filepath, "Hardware/Tooling")
+    stock_length = extract_from_excel(filepath, "StockLength")
+    stock_width = extract_from_excel(filepath, "StockWidth")
+
     my_dict = {}
     p = 1
 
-    for a,b,c,d,e,f,g,h,i,j,k,l,m,n,o in zip(part_number,description,length,thickness,width,weight,material,finish_code,heat_treat,drawing_number,drawing_revision,qty_reqd,pl_rev,assy_for, hardware_or_supplies):  # noqa: E741
+    for a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,q,r in zip(part_number,description,length,thickness,width,weight,material,finish_code,heat_treat,drawing_number,drawing_revision,qty_reqd,pl_rev,assy_for, hardware_or_supplies, stock_length, stock_width):  # noqa: E741
         a = f"Tool - {p}" if isinstance(a, float) and math.isnan(a) else a 
         b = None if isinstance(b, float) and math.isnan(b) else b
         c = 0.00 if isinstance(c, float) and math.isnan(c) else c
@@ -57,9 +60,10 @@ def create_dict_from_excel(filepath):
         m = None if isinstance(m, float) and math.isnan(m) else m
         n = None if isinstance(n, float) and math.isnan(n) else n
         o = None if isinstance(o, float) and math.isnan(o) else o
+        q = 0.00 if isinstance(q, float) and math.isnan(q) else q
+        r = 0.00 if isinstance(r, float) and math.isnan(r) else r
         p+=1
-        my_dict[a] = (b,c,d,e,f,g,h,i,j,k,l,m,n,o)
-        print(my_dict)
+        my_dict[a] = (b,c,d,e,f,g,h,i,j,k,l,m,n,o,q,r)
     
     return my_dict
 
