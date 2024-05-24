@@ -11,6 +11,3 @@ def get_connection(live=False):
     if live:
         return pyodbc.connect(_conn_string_live)
     return pyodbc.connect(_conn_string_sandbox)
-
-# if __name__ == "__main__":
-#     get_connection(live=True)

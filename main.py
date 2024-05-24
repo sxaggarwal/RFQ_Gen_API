@@ -392,7 +392,7 @@ class RfqGen(tk.Tk):
                         y+=1
                     elif value[13] == "Tooling":
                         quote_assembly_pk = self.quote_assembly_table.get("QuoteAssemblyPK", QuoteFK=fk, SequenceNumber=8)
-                        item_fk = self.data_base_conn.get_or_create_item(key, description=value[0], item_type_fk=7, mps_item=0, forecast_on_mrp=0, mps_on_mrp=0, service_item=0, ship_loose=0, bulk_ship=0)
+                        item_fk = self.data_base_conn.get_or_create_item(key, description=value[0], item_type_fk=7, mps_item=0, purchase=0, forecast_on_mrp=0, mps_on_mrp=0, service_item=0, ship_loose=0, bulk_ship=0, can_not_create_work_order=1, can_not_invoice=1, manufactured_item=1)
                         self.data_base_conn.create_bom_quote(fk, item_fk, quote_assembly_pk[0][0], 8, y)
                         y+=1
                 loading_screen.set_progress(ct)
@@ -437,47 +437,57 @@ class RfqGen(tk.Tk):
             i+=1
 
     def add_item(self):
-        if self.customer_select_box.get() and self.file_path_PR_entry.get(0):
-            party_pk = self.party_pk
+        if self.file_path_PR_entry.get(0):
+            if self.customer_select_box.get():
+                party_pk = self.party_pk
+            else:
+                party_pk = None
             user_selected_file_paths = list(self.file_path_PR_entry.get(0, tk.END) + self.file_path_PL_entry.get(0, tk.END))
             info_dict = create_dict_from_excel(self.file_path_PR_entry.get(0, tk.END)[0])
             path_dict = {}
             restricted = False
             for key, value in info_dict.items():
-                if self.itar_restricted_var.get(): # checking if the user clicked on Restricted box or not and based on that destination path is decided
-                    destination_path = rf'y:\PDM\Restricted\{self.customer_select_box.get()}\{key}'
-                    restricted = True
+                if self.customer_select_box.get():
+                    if self.itar_restricted_var.get(): # checking if the user clicked on Restricted box or not and based on that destination path is decided
+                        destination_path = rf'y:\PDM\Restricted\{self.customer_select_box.get()}\{key}'
+                        restricted = True
+                    else:
+                        destination_path = rf'y:\PDM\Non-restricted\{self.customer_select_box.get()}\{key}'
+                    
+                    for file in user_selected_file_paths:
+                        # folder is get or created and file is copied to this folder
+                        file_path_to_add_to_rfq = transfer_file_to_folder(destination_path, file)
+                        path = file_path_to_add_to_rfq.lower()
+                        if "_pl_" in path or "spdl" in path or "psdl" in path or "pl" in os.path.basename(path):
+                            path_dict[file_path_to_add_to_rfq] = 26
+                        elif "dwg" in path or "drw" in path:
+                            path_dict[file_path_to_add_to_rfq] = 27
+                        elif "step" in path or "stp" in path:
+                            path_dict[file_path_to_add_to_rfq] = 30
+                        elif "zsp" in path or "speco" in path:
+                            path_dict[file_path_to_add_to_rfq] = 33
+                        elif ".cat" in path:
+                            path_dict[file_path_to_add_to_rfq] = 16
+                        elif "prt" in path:
+                            path_dict[file_path_to_add_to_rfq] = 17
+                        elif "lwg" in path:
+                            path_dict[file_path_to_add_to_rfq] = 29
+                        else:
+                            path_dict[file_path_to_add_to_rfq] = None
+                if value[13] == "Hardware":
+                    item_pk = self.data_base_conn.create_item(key, party_pk, value[15] , value[14], value[2], value[4], item_type_fk=3, description=value[0])
+                elif value[13] == "Tooling":
+                    item_pk = self.data_base_conn.create_item(key, party_pk, value[15] , value[14], value[2], value[4], item_type_fk=7, description=value[0], purchase=0, forecast_on_mrp=0, can_not_create_work_order=1, can_not_invoice=1, manufactured_item=1, mps_item=0, mps_on_mrp=0, service_item=0, bulk_ship=0, ship_loose=0)
                 else:
-                    destination_path = rf'y:\PDM\Non-restricted\{self.customer_select_box.get()}\{key}'
-                
-                for file in user_selected_file_paths:
-                    # folder is get or created and file is copied to this folder
-                    file_path_to_add_to_rfq = transfer_file_to_folder(destination_path, file)
-                    path = file_path_to_add_to_rfq.lower()
-                    if "_pl_" in path or "spdl" in path or "psdl" in path or "pl" in os.path.basename(path):
-                        path_dict[file_path_to_add_to_rfq] = 26
-                    elif "dwg" in path or "drw" in path:
-                        path_dict[file_path_to_add_to_rfq] = 27
-                    elif "step" in path or "stp" in path:
-                        path_dict[file_path_to_add_to_rfq] = 30
-                    elif "zsp" in path or "speco" in path:
-                        path_dict[file_path_to_add_to_rfq] = 33
-                    elif ".cat" in path:
-                        path_dict[file_path_to_add_to_rfq] = 16
-                    elif "prt" in path:
-                        path_dict[file_path_to_add_to_rfq] = 17
-                    elif "lwg" in path:
-                        path_dict[file_path_to_add_to_rfq] = 29
-                    else:
-                        path_dict[file_path_to_add_to_rfq] = None
-                
-                item_pk = self.data_base_conn.create_item(key, party_pk, value[15] , value[14], value[2], value[4])
-                matching_paths = {path:pk for path,pk in path_dict.items() if key in path}
-                for url, pk in matching_paths.items():
-                    if restricted:
-                        self.data_base_conn.upload_documents(url, item_fk=item_pk, document_type_fk=2, secure_document=1, document_group_pk=pk)
-                    else:
-                        self.data_base_conn.upload_documents(url, item_fk=item_pk, document_type_fk=2, document_group_pk=pk)
+                    item_pk = self.data_base_conn.create_item(key, party_pk, value[15] , value[14], value[2], value[4], description=value[0])
+
+                if self.customer_select_box.get():
+                    matching_paths = {path:pk for path,pk in path_dict.items() if key in path}
+                    for url, pk in matching_paths.items():
+                        if restricted:
+                            self.data_base_conn.upload_documents(url, item_fk=item_pk, document_type_fk=2, secure_document=1, document_group_pk=pk)
+                        else:
+                            self.data_base_conn.upload_documents(url, item_fk=item_pk, document_type_fk=2, document_group_pk=pk)
             messagebox.showinfo("Success", "Item added successfully!")
             self.customer_select_box.set("")
             self.buyer_select_box.set("")
@@ -486,7 +496,7 @@ class RfqGen(tk.Tk):
             self.file_path_PR_entry.delete(0, tk.END)
             self.rfq_number_text.delete(0, tk.END)
         else:
-            messagebox.showerror("ERROR", "Select Customer/ Upload Parts Requested File")
+            messagebox.showerror("ERROR", "Upload Parts to be added File")
             self.customer_select_box.set("")
             self.buyer_select_box.set("")
             self.customer_info_text.delete(1.0, tk.END)
