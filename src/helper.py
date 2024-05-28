@@ -40,11 +40,12 @@ def create_dict_from_excel(filepath):
     hardware_or_supplies = extract_from_excel(filepath, "Hardware/Tooling")
     stock_length = extract_from_excel(filepath, "StockLength")
     stock_width = extract_from_excel(filepath, "StockWidth")
+    stock_thickness = extract_from_excel(filepath, "StockThickness")
 
     my_dict = {}
     p = 1
 
-    for a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,q,r in zip(part_number,description,length,thickness,width,weight,material,finish_code,heat_treat,drawing_number,drawing_revision,qty_reqd,pl_rev,assy_for, hardware_or_supplies, stock_length, stock_width):  # noqa: E741
+    for a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,q,r,s in zip(part_number,description,length,thickness,width,weight,material,finish_code,heat_treat,drawing_number,drawing_revision,qty_reqd,pl_rev,assy_for, hardware_or_supplies, stock_length, stock_width, stock_thickness):  # noqa: E741
         a = f"Tool - {p}" if isinstance(a, float) and math.isnan(a) else a 
         b = None if isinstance(b, float) and math.isnan(b) else b
         c = 0.00 if isinstance(c, float) and math.isnan(c) else c
@@ -62,8 +63,9 @@ def create_dict_from_excel(filepath):
         o = None if isinstance(o, float) and math.isnan(o) else o
         q = 0.00 if isinstance(q, float) and math.isnan(q) else q
         r = 0.00 if isinstance(r, float) and math.isnan(r) else r
+        s = 0.00 if isinstance(s, float) and math.isnan(s) else s
         p+=1
-        my_dict[a] = (b,c,d,e,f,g,h,i,j,k,l,m,n,o,q,r)
+        my_dict[a] = (b,c,d,e,f,g,h,i,j,k,l,m,n,o,q,r,s)
     
     return my_dict
 
@@ -76,7 +78,7 @@ def pk_info_dict(info_dict):
         fin_pk = None
         ht_pk = None
         if value[5]:
-            result = item_table.get("ItemPK", PartNumber=value[5], StockLength=value[1], StockWidth=value[3])
+            result = item_table.get("ItemPK", PartNumber=value[5], StockLength=value[14], StockWidth=value[15], Thickness=value[16])
             if result:
                 mat_pk = result[0][0]
             else:

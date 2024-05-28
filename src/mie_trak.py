@@ -346,8 +346,8 @@ class MieTrak:
     
     def insert_part_details_in_item(self, item_pk, part_number, values, item_type = None):
         if item_type == 'Material':
-            po_comment = f" Dimensions (L x W x T): {values[7]} x {values[8]} x {values[1]}"
-            self.item_table.update(item_pk, StockLength=values[7], Thickness=values[1], StockWidth=values[8], Weight=values[3], PartLength=values[0], PartWidth=values[2], PurchaseOrderComment=po_comment, ManufacturedItem=0, Purchase=1, ShipLoose=0, BulkShip=0)
+            po_comment = f" Dimensions (L x W x T): {values[7]} x {values[8]} x {values[9]}"
+            self.item_table.update(item_pk, StockLength=values[7], Thickness=values[9], StockWidth=values[8], Weight=values[3], PartLength=values[0], PartWidth=values[2], PurchaseOrderComment=po_comment, ManufacturedItem=0, Purchase=1, ShipLoose=0, BulkShip=0)
         else:
             self.item_table.update(item_pk, StockLength=values[7], Thickness=values[1], StockWidth=values[8], Weight=values[3], DrawingNumber=values[4], DrawingRevision=values[5], Revision=values[6], PartLength=values[0], PartWidth=values[2], VendorPartNumber=part_number)
 

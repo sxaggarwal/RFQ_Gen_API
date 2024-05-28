@@ -367,7 +367,7 @@ class RfqGen(tk.Tk):
                         self.data_base_conn.create_assy_quote(quote_pk, fk, qty_req=value[10])
                     
                     if key in info_dict:
-                        dict_values = [value[1], value[2], value[3], value[4], value[8], value[9], value[11], value[14], value[15]]
+                        dict_values = [value[1], value[2], value[3], value[4], value[8], value[9], value[11], value[14], value[15], value[16]]
                         self.data_base_conn.insert_part_details_in_item(item_pk, key, dict_values)
                         pk_value = my_dict[key]
                         for j in pk_value[1:]:
