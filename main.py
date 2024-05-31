@@ -347,7 +347,10 @@ class RfqGen(tk.Tk):
                     if key in my_dict:
                         dict_values = my_dict[key]
                         for j, k, l in zip(dict_values, quote_assembly_fk, a):   # noqa: E741
-                            if j is not None:
+                            if j is not None and l == 6:
+                                self.data_base_conn.create_bom_quote(quote_pk, j, k, l, y, part_length=value[14], part_width=value[15], thickness=value[16])
+                                y+=1
+                            elif j is not None:
                                 self.data_base_conn.create_bom_quote(quote_pk, j, k, l, y, part_length=value[1], part_width=value[3], thickness=value[2])
                                 y+=1
                         # Update: May10
