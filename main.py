@@ -288,6 +288,7 @@ class RfqGen(tk.Tk):
             count = 1
             info_dict = create_dict_from_excel(self.file_path_PR_entry.get(0, tk.END)[0])
             my_dict = pk_info_dict(info_dict)
+            item_pk_dict = {}
             restricted = False
             quote_pk_dict = {}
             loading_screen.set_progress(10)
@@ -326,6 +327,7 @@ class RfqGen(tk.Tk):
                     count+=1
 
                     item_pk = self.data_base_conn.get_or_create_item(key, description=value[0], purchase=0, service_item=0, manufactured_item=1)
+                    item_pk_dict[key] = item_pk
                     matching_paths = {path:pk for path,pk in path_dict.items() if key in path}
                     for url, pk in matching_paths.items():
                             if restricted:
@@ -360,15 +362,6 @@ class RfqGen(tk.Tk):
                             finish_description = value[6]
                             self.create_finish_router(finish_description, op_finish_pk, op_part_number)
                     
-                    if value[12] is None:
-                        rfq_line_pk = self.data_base_conn.create_rfq_line_item(item_pk, rfq_pk, i, quote_pk, quantity=value[10])
-                        i+=1
-                        self.data_base_conn.rfq_line_qty(rfq_line_pk, value[10])
-                    else:
-                        part_num = value[12]
-                        fk = quote_pk_dict.get(part_num)
-                        self.data_base_conn.create_assy_quote(quote_pk, fk, qty_req=value[10])
-                    
                     if key in info_dict:
                         dict_values = [value[1], value[2], value[3], value[4], value[8], value[9], value[11], value[14], value[15], value[16]]
                         self.data_base_conn.insert_part_details_in_item(item_pk, key, dict_values)
@@ -400,7 +393,10 @@ class RfqGen(tk.Tk):
                         y+=1
                 loading_screen.set_progress(ct)
                 if ct<90:
-                    ct+=10
+                    ct+=10 
+            
+            self.process_rfq(quote_pk_dict, item_pk_dict, rfq_pk, info_dict)
+
             for value in quote_pk_dict.values():
                 self.data_base_conn.create_quote_assembly_formula_variable(value)
             loading_screen.set_progress(100)
@@ -438,6 +434,35 @@ class RfqGen(tk.Tk):
         for pk in finish_pks:
             self.data_base_conn.create_router_work_center(pk, router_pk, i)
             i+=1
+
+    def process_rfq(self, quote_pk_dict, item_pk_dict, rfq_pk, info_dict, parent_key=None, parent_quote_fk=None, i=0, j=0, parent_quote_assembly_fk = None, key_list=[]):
+
+        for key, value in info_dict.items():
+            parent_quote_assembly_pk=None  # key = 1
+            if (value[12] is None and key not in key_list) or value[12] == parent_key:
+                quote_pk = quote_pk_dict.get(key)
+                item_pk = item_pk_dict.get(key)
+
+                if value[12] is None and key not in key_list:
+                    # Initial creation of rfq line item
+                    rfq_line_pk = self.data_base_conn.create_rfq_line_item(item_pk, rfq_pk, i, quote_pk, quantity=value[10])
+                    i += 1
+                    self.data_base_conn.rfq_line_qty(rfq_line_pk, value[10])
+                    self.main_quote_pk = quote_pk
+                    print(f"PK: {self.main_quote_pk}")
+                    parent_quote_assembly_pk=None
+                    key_list.append(key)
+                elif value[13] is None and value[12]==parent_key:
+                    
+                    parent_key_quote_pk = quote_pk_dict.get(parent_key)
+                    if j==0:
+                        parent_quote_assembly_pk = self.data_base_conn.create_assy_quote(quote_pk, parent_quote_fk, value[10])
+                        j+=1
+                    else: 
+                        parent_quote_assembly_pk = self.data_base_conn.create_assy_quote(quote_pk, parent_quote_fk, value[10], parent_quote_fk=parent_key_quote_pk, parent_quote_asembly=parent_quote_assembly_fk)
+                        j+=1  
+                self.process_rfq(quote_pk_dict, item_pk_dict, rfq_pk, info_dict, parent_key=key, parent_quote_fk=self.main_quote_pk, i=i, j=j, parent_quote_assembly_fk=parent_quote_assembly_pk, key_list=key_list)
+
 
     def add_item(self):
         if self.file_path_PR_entry.get(0):

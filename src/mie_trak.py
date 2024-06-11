@@ -230,7 +230,7 @@ class MieTrak:
         for row in all_columns:
             if row[0] not in columns_to_omit:
                 ret_list.append(row[0])
-        
+
         if quote_fk == 494: 
             ret_list_str = ','.join(map(str, ret_list))
             temp = self.quote_assembly_table.get(ret_list_str, QuoteFK=494, ItemFK=None)
@@ -238,7 +238,7 @@ class MieTrak:
             ret_list_str = ','.join(map(str, ret_list))
             temp = self.quote_assembly_table.get(ret_list_str, QuoteFK=quote_fk)
 
-        return ret_list, temp
+        return ret_list, temp       
     
     def add_operation_to_quote(self, quote_fk):
         ret_list, temp = self.quote_operation_template()
@@ -325,7 +325,7 @@ class MieTrak:
         }
         self.rfq_line_qty_table.insert(info_dict)
     
-    def create_assy_quote(self, quote_to_be_added, quotefk, qty_req = 1):
+    def create_assy_quote(self, quote_to_be_added, quotefk, qty_req = 1, parent_quote_fk = None, parent_quote_asembly=None):
         info_dict = {
             "QuoteFK": quotefk, 
             "ItemQuoteFK": quote_to_be_added, 
@@ -333,7 +333,9 @@ class MieTrak:
             "Pull": 0, 
             "Lock": 0, 
             "OrderBy": 1, 
-            "QuantityRequired": qty_req
+            "QuantityRequired": qty_req,
+            "ParentQuoteFK": parent_quote_fk,
+            "ParentQuoteAssemblyFK": parent_quote_asembly,
         }
         pk = self.quote_assembly_table.insert(info_dict)
         ret_list, temp = self.quote_operation_template(quote_fk=quote_to_be_added)
@@ -343,6 +345,7 @@ class MieTrak:
             info_dict1['ParentQuoteAssemblyFK'] = pk
             info_dict1['ParentQuoteFK'] = quote_to_be_added
             self.quote_assembly_table.insert(info_dict1)
+        return pk
     
     def insert_part_details_in_item(self, item_pk, part_number, values, item_type = None):
         if item_type == 'Material':
