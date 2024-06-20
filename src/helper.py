@@ -7,14 +7,14 @@ import math
 import pandas as pd
 
 def transfer_file_to_folder(folder_path: str, file_path: str) -> str:
-        """ Copies file from one path to another path"""
-        os.makedirs(folder_path, exist_ok=True)
+    """ Copies file from one path to another path"""
+    os.makedirs(folder_path, exist_ok=True)
 
-        filename = os.path.basename(file_path)  # source file path
-        destination_path = os.path.join(folder_path, filename)
-        shutil.copyfile(file_path, destination_path)
+    filename = os.path.basename(file_path)  # source file path
+    destination_path = os.path.join(folder_path, filename)
+    shutil.copyfile(file_path, destination_path)
 
-        return destination_path
+    return destination_path
 
 def extract_from_excel(filepath, column_name):
     """ Extracting a column from an excel file"""
@@ -23,6 +23,7 @@ def extract_from_excel(filepath, column_name):
     return data
 
 def create_dict_from_excel(filepath):
+    """Converts the excel file into a dictionary with part number as key"""
     part_number = extract_from_excel(filepath, "Part")
     description = extract_from_excel(filepath, "DESCRIPTION")
     length = extract_from_excel(filepath, "PartLength")
@@ -70,6 +71,7 @@ def create_dict_from_excel(filepath):
     return my_dict
 
 def pk_info_dict(info_dict):
+    """Creates a dictionary with part number as key and its material pk, heat treat pk and finish pk as value"""
     item_table = TableManger("Item")
     m = MieTrak()
     my_dict = {}
@@ -104,6 +106,7 @@ def pk_info_dict(info_dict):
     return my_dict
 
 def check_and_create_tooling(user_des):
+    """Creates a tooling with a Unique ID if it doesn't exist in the database and return its PK"""
     tool_pk = None
     m = MieTrak()
     numbers= []

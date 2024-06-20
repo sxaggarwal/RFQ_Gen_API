@@ -112,7 +112,7 @@ class TableManger:
         try:
             with get_connection() as conn:
                 cursor = conn.cursor()
-                query = f"DELETE FROM {self.table_name} WHERE {self.table_name}PK='?';"
+                query = f"DELETE FROM {self.table_name} WHERE {self.table_name}PK=?;"
                 self.logger.info(f"DELETE - {self.table_name}PK: {pk}")
                 cursor.execute(query, pk)
                 conn.commit()

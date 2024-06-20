@@ -3,7 +3,9 @@ from src.general_class import TableManger
 from src.schema import _get_schema
 
 class MieTrak:
+    """Includes functions related to connection with MIE Trak for CRUD operations"""
     def __init__(self):
+        #Initialising all the Tables using the MIE Trak API
         self.party_table = TableManger("Party")
         self.address_table = TableManger("Address")
         self.state_table = TableManger("State")
@@ -22,6 +24,7 @@ class MieTrak:
         self.router_work_center_table = TableManger("RouterWorkCenter")
 
     def get_customer_data(self,selected_customer_index=None, names=False):
+        """Gets the data of a selected customer"""
         data = self.party_table.get("PartyPK","Name", Customer=1)
         if names is True:
             customer_names = [d[1] for d in data]
@@ -38,6 +41,7 @@ class MieTrak:
             return short_name, email, party_pk
     
     def get_buyer_info(self, buyer_fk):
+        """Gets the data of a buyer for a customer"""
         selected_customer_data = self.party_table.get("ShortName", "Email", PartyPK=buyer_fk)
         if selected_customer_data:
             short_name, email = selected_customer_data[0]
@@ -47,6 +51,7 @@ class MieTrak:
         return short_name, email
     
     def get_buyer_data(self, party_pk,):
+        """Gets the buyer data for a customer"""
         data = self.party_buyer_table.get("BuyerFK", PartyFK=party_pk)
         my_dict = {}
         if data:
@@ -58,6 +63,7 @@ class MieTrak:
         return my_dict
     
     def get_address(self, party_fk):
+        """Gets address of a customer though PartyPK"""
         billing_details = self.address_table.get("AddressPK", "Name", "Address1", "Address2", "AddressAlt", "City", "ZipCode", PartyFK=party_fk)
         if billing_details:
             billing_details = billing_details[0]
@@ -80,7 +86,8 @@ class MieTrak:
             country = [(None,),]   
         return billing_details, state, country
     
-    def insert_into_rfq(self, customer_fk, billing_details, state, country, customer_rfq_number = None, buyer_fk = None, inquiry_date=None, due_date=None, create_date=None):
+    def insert_into_rfq(self, customer_fk, billing_details, state, country, customer_rfq_number = None, buyer_fk = None, inquiry_date=None, due_date=None, create_date=None, rfq_status_fk=5):
+        """Inserts all the details and returns a RFQ number"""
         info_dict = {
             "CustomerFK" : customer_fk,
             "BuyerFK" : buyer_fk,
@@ -92,7 +99,7 @@ class MieTrak:
             "DidNotGet": 0, 
             "MIEExchange": 0, 
             "SalesTaxOnFreight": 0,
-            "RequestForQuoteStatusFK": 1,
+            "RequestForQuoteStatusFK": rfq_status_fk,
             "BillingAddressName": billing_details[1], 
             "BillingAddress1": billing_details[2], 
             "BillingAddress2": billing_details[3], 
@@ -118,6 +125,7 @@ class MieTrak:
         return rfq_pk
     
     def get_or_create_item(self, part_number, item_type_fk=1, mps_item=1, purchase=1, forecast_on_mrp=1, mps_on_mrp=1, service_item=1, unit_of_measure_set_fk=1, vendor_unit=1.0, manufactured_item=0, calculation_type_fk=1, inventoriable=1, purchase_order_comment=None,  description=None, comment=None, only_create=None, bulk_ship=1, ship_loose=1, cert_reqd_by_supplier=0, can_not_create_work_order=0, can_not_invoice=0, general_ledger_account_fk=100, purchase_account_fk=116, cogs_acc_fk=116):
+        """Checks if the part Number exists in the database, if not then creates the item and returns the itempk otherwise it just returns the ItemPK if found"""
         if only_create is None:
             item_pk = self.item_table.get("ItemPK", PartNumber=part_number)
             if item_pk:
@@ -190,6 +198,7 @@ class MieTrak:
             return item_pk
     
     def upload_documents(self, document_path: str, rfq_fk=None, item_fk=None, document_type_fk=None, secure_document=0, document_group_pk=None, print_with_purchase_order=None):
+        """Attaches Document to the RFQ or Item based on the PK provided"""
         if not rfq_fk and not item_fk:
             raise TypeError("Both values can not be None")
         found = False
@@ -213,6 +222,7 @@ class MieTrak:
             self.document_table.insert(doc_dict)
     
     def create_quote(self, customer_fk, item_fk, quote_type, part_number):
+        """Creates a Quote"""
         info_dict = {
             "CustomerFK": customer_fk, 
             "ItemFK": item_fk, 
@@ -224,6 +234,7 @@ class MieTrak:
         return quote_pk
 
     def quote_operation_template(self, quote_fk=494):
+        """Copies the operation template for a quoteFK"""
         all_columns = _get_schema("QuoteAssembly")
         ret_list = []
         columns_to_omit = ['QuoteFK', 'QuoteAssemblyPK', 'LastAccess', 'ParentQuoteAssemblyFK', 'ParentQuoteFK']
@@ -241,6 +252,7 @@ class MieTrak:
         return ret_list, temp       
     
     def add_operation_to_quote(self, quote_fk):
+        """Adds the operation template to a quote"""
         ret_list, temp = self.quote_operation_template()
         for data in temp:
             info_dict = dict(zip(ret_list, data))
@@ -256,7 +268,8 @@ class MieTrak:
                             vendor_unit=1.00000, grain_direction=0, parts_per_blank=1.000,
                             against_grain=0, double_sided=0, cert_reqd=0, non_amortized_item=0,
                             pull=0, not_include_in_piece_price=0, lock=0, nestable=0,
-                            bulk_ship=0, ship_loose=0, customer_supplied_material=0, thickness=0.00):        
+                            bulk_ship=0, ship_loose=0, customer_supplied_material=0, thickness=0.00):      
+        """Creates Bill Of Materials for a Quote"""  
         info_dict = {
             "QuoteFK": quote_fk, 
             "ItemFK": item_fk, 
@@ -304,6 +317,7 @@ class MieTrak:
         self.quote_assembly_table.insert(info_dict)
     
     def create_rfq_line_item(self, item_fk: int, request_for_quote_fk: int, line_reference_number: int, quote_fk: int, price_type_fk=3, unit_of_measure_set_fk=1, quantity=None):
+        """Adds Line Item to the RFQ"""
         info_dict = {
             "ItemFK" : item_fk, 
             "RequestForQuoteFK": request_for_quote_fk, 
@@ -317,6 +331,7 @@ class MieTrak:
         return pk
     
     def rfq_line_qty(self, rfq_line_fk, quantity, delivery = 1, price_type_fk = 3):
+        """Adds Quantity to the RFQ Line"""
         info_dict = {
             "RequestForQuoteLineFK": rfq_line_fk, 
             "PriceTypeFK": price_type_fk, 
@@ -326,6 +341,7 @@ class MieTrak:
         self.rfq_line_qty_table.insert(info_dict)
     
     def create_assy_quote(self, quote_to_be_added, quotefk, qty_req = 1, parent_quote_fk = None, parent_quote_asembly=None):
+        """Creates Quote for Assembly parts"""
         info_dict = {
             "QuoteFK": quotefk, 
             "ItemQuoteFK": quote_to_be_added, 
@@ -348,14 +364,23 @@ class MieTrak:
         return pk
     
     def insert_part_details_in_item(self, item_pk, part_number, values, item_type = None):
+        """Updates Item with more details"""
         if item_type == 'Material':
             po_comment = f" Dimensions (L x W x T): {values[7]} x {values[8]} x {values[9]}"
             self.item_table.update(item_pk, StockLength=values[7], Thickness=values[9], StockWidth=values[8], Weight=values[3], PartLength=values[0], PartWidth=values[2], PurchaseOrderComment=po_comment, ManufacturedItem=0, Purchase=1, ShipLoose=0, BulkShip=0)
         else:
             self.item_table.update(item_pk, StockLength=values[7], Thickness=values[1], StockWidth=values[8], Weight=values[3], DrawingNumber=values[4], DrawingRevision=values[5], Revision=values[6], PartLength=values[0], PartWidth=values[2], VendorPartNumber=part_number)
 
+    def insert_part_details_in_item_new(self, item_pk, part_number, values, item_type = None):
+        """Similar to the other insert_part_details function just the structure of value list is different"""
+        if item_type == 'Material':
+            po_comment = f" Dimensions (L x W x T): {values[14]} x {values[15]} x {values[16]}"
+            self.item_table.update(item_pk, StockLength=values[14], Thickness=values[16], StockWidth=values[15], Weight=values[4], PartLength=values[1], PartWidth=values[3], PurchaseOrderComment=po_comment, ManufacturedItem=0, Purchase=1, ShipLoose=0, BulkShip=0)
+        else:
+            self.item_table.update(item_pk, StockLength=values[14], Thickness=values[16], StockWidth=values[15], Weight=values[4], DrawingNumber=values[8], DrawingRevision=values[9], Revision=values[11], PartLength=values[1], PartWidth=values[3], VendorPartNumber=part_number)
+
     def create_buyer(self, info_dict, customer_pk):
-        """ """
+        """ Creates a Buyer"""
         buyer_pk = self.party_table.insert(info_dict)
         my_dict = {
             "PartyFK": customer_pk,
@@ -365,25 +390,27 @@ class MieTrak:
         return buyer_pk
     
     def create_quote_assembly_formula_variable(self, quote_pk):
-        temp = self.quote_assembly_table.get("QuoteAssemblyPK", "SetupFormulaFK", "RunFormulaFK", "OperationFK", QuoteFK=quote_pk)
-        for a,b,c,d in temp:
+        """Inserts Formula in the Operations for the quotes, also inserts the setup time for each operation"""
+        temp = self.quote_assembly_table.get("QuoteAssemblyPK", "SetupFormulaFK", "RunFormulaFK", "OperationFK", "SetupTime", "RunTime", QuoteFK=quote_pk)
+        for a,b,c,d,e,f in temp:
             if d:
                 dict_1 = {
                     "QuoteAssemblyFK" : a,
                     "OperationFormulaVariableFK": b,
                     "FormulaType": 0,
-                    "VariableValue": 0.000,
+                    "VariableValue": e, #can change this in future 
                 }
                 dict_2 = {
                     "QuoteAssemblyFK" : a,
                     "OperationFormulaVariableFK": c,
                     "FormulaType": 1,
-                    "VariableValue": 0.000,
+                    "VariableValue": f, #can change this in future
                 }
                 self.quote_assembly_formula_variable_table.insert(dict_1)
                 self.quote_assembly_formula_variable_table.insert(dict_2)
     
     def create_item(self, part_number, partyfk, stock_width, stock_length, thickness, weight, item_type_fk=1, mps_item=1, purchase=1, forecast_on_mrp=1, mps_on_mrp=1, service_item=1, unit_of_measure_set_fk=1, vendor_unit=1.0, manufactured_item=0, calculation_type_fk=1, inventoriable=1, purchase_order_comment=None,  description=None, comment=None, bulk_ship=1, ship_loose=1, cert_reqd_by_supplier=0, can_not_create_work_order=0, can_not_invoice=0, general_ledger_account_fk=100, purchase_account_fk=116, cogs_acc_fk=116):
+        """Creates a new Item in the Item Table"""
         inventory_info_dict = {
                 "QuantityOnHand": 0.000,
             }
@@ -424,6 +451,7 @@ class MieTrak:
     
     # Update: May10
     def create_router(self, item_fk, part_number, division_fk=1, router_status_fk=2, router_type=0, default_router=1):
+        """Creates a router for Finish"""
         router_dict = {
             "ItemFK": item_fk,
             "RouterStatusFK": router_status_fk,
@@ -436,6 +464,7 @@ class MieTrak:
         return router_pk
     
     def create_router_work_center(self, item_fk, router_fk, order_by, unit_of_measure_set_fk=1, sequence_number=1, parts_per_blank=1.00, parts_reqd = 1.000, qty_reqd= 1.000, qty_per_inv = 1, min_per_part=0, vend_unit= 1.00, setup_time=0.00):
+        """Creates the work center of a Finish router"""
         router_work_center_dict = {
             "ItemFK": item_fk,
             "RouterFK": router_fk,
@@ -451,3 +480,18 @@ class MieTrak:
             "SetupTime": setup_time,
         }
         self.router_work_center_table.insert(router_work_center_dict)
+    
+    def delete_rfq_line_pk(self, rfq_pk):
+        """Deletes all the Line Items and Quotes for a RFQ Number"""
+        rfq_line_pk = self.rfq_line_table.get("RequestForQuoteLinePK", "QuoteFK", RequestForQuoteFK=rfq_pk)
+        if rfq_line_pk:
+            for pk in rfq_line_pk:
+                self.rfq_line_table.delete(pk[0])
+                quote_assembly_pk = self.quote_assembly_table.get("QuoteAssemblyPK", QuoteFK=pk[1])
+                for assembly_pk in quote_assembly_pk:
+                    self.quote_assembly_table.delete(assembly_pk[0])
+                self.quote_table.delete(pk[1])
+
+        
+        
+            
