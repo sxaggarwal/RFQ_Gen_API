@@ -5,7 +5,7 @@ import os
 import shutil
 import math
 import pandas as pd
-
+from tkinter import messagebox
 
 def transfer_file_to_folder(folder_path: str, file_path: str) -> str:
     """Copies file from one path to another path"""
@@ -25,7 +25,56 @@ def extract_from_excel(filepath, column_name):
     return data
 
 
-def create_dict_from_excel(filepath):
+def validate_excel_data(part_number, hardware_or_supplies, assy_for, length, thickness, width, weight, qty_reqd, stock_length, stock_width, stock_thickness, rfq_gen = True):
+    """Validates the excel data before creating the dictionary."""
+    errors = []
+    part_number_set = set()
+    
+    for i, (pn, hw_or_supplies, assy, ln, th, wd, wt, qty, sl, sw, st) in enumerate(
+        zip(part_number, hardware_or_supplies, assy_for, length, thickness, width, weight, qty_reqd, stock_length, stock_width, stock_thickness)
+    ):
+        # Handle NaN values for hardware_or_supplies
+        hw_or_supplies = hw_or_supplies if isinstance(hw_or_supplies, str) else ''
+        assy = assy if isinstance(assy, str) else None
+
+        # Check for duplicate part numbers
+        if pn in part_number_set:
+            errors.append(f"Row {i + 2}: Duplicate part number '{pn}' found.")
+        part_number_set.add(pn)
+
+        if pn is None or (isinstance(pn, float) and math.isnan(pn)):
+            if not hw_or_supplies.strip().lower() == 'hardware':
+                errors.append(f"Row {i + 2}: If part number is missing, 'Hardware' is required in 'Hardware/Tooling'.")
+
+        if hw_or_supplies.strip():
+            if hw_or_supplies.strip().lower() not in ['hardware', 'tooling']:
+                errors.append(f"Row {i + 2}: 'Hardware/Tooling' must be 'Hardware', 'Tooling', or blank.")
+            if not assy and rfq_gen == True:
+                errors.append(f"Row {i + 2}: 'AssyFor' is required if 'Hardware/Tooling' has a value.")
+        
+        # Check if length, thickness, width, weight, qty_reqd, stock_length, stock_width, stock_thickness are numbers or NaN
+        if not (isinstance(ln, (int, float)) and not isinstance(ln, bool)) and not (isinstance(ln, float) and math.isnan(ln)):
+            errors.append(f"Row {i + 2}: 'Length' must be an integer, float, or blank.")
+        if not (isinstance(th, (int, float)) and not isinstance(th, bool)) and not (isinstance(th, float) and math.isnan(th)):
+            errors.append(f"Row {i + 2}: 'Thickness' must be an integer, float, or blank.")
+        if not (isinstance(wd, (int, float)) and not isinstance(wd, bool)) and not (isinstance(wd, float) and math.isnan(wd)):
+            errors.append(f"Row {i + 2}: 'Width' must be an integer, float, or blank.")
+        if not (isinstance(wt, (int, float)) and not isinstance(wt, bool)) and not (isinstance(wt, float) and math.isnan(wt)):
+            errors.append(f"Row {i + 2}: 'Weight' must be an integer, float, or blank.")
+        if not (isinstance(qty, (int, float)) and not isinstance(qty, bool)) and not (isinstance(qty, float) and math.isnan(qty)):
+            errors.append(f"Row {i + 2}: 'Quantity Required' must be an integer, float, or blank.")
+        if not (isinstance(sl, (int, float)) and not isinstance(sl, bool)) and not (isinstance(sl, float) and math.isnan(sl)):
+            errors.append(f"Row {i + 2}: 'Stock Length' must be an integer, float, or blank.")
+        if not (isinstance(sw, (int, float)) and not isinstance(sw, bool)) and not (isinstance(sw, float) and math.isnan(sw)):
+            errors.append(f"Row {i + 2}: 'Stock Width' must be an integer, float, or blank.")
+        if not (isinstance(st, (int, float)) and not isinstance(st, bool)) and not (isinstance(st, float) and math.isnan(st)):
+            errors.append(f"Row {i + 2}: 'Stock Thickness' must be an integer, float, or blank.")
+     
+    if errors:
+        messagebox.showerror("Validation Errors", "\n".join(errors))
+    return errors
+
+def create_dict_from_excel(filepath, rfq_generate = True):
     """Converts the excel file into a dictionary with part number as key"""
     part_number = extract_from_excel(filepath, "Part")
     description = extract_from_excel(filepath, "DESCRIPTION")
@@ -46,51 +95,58 @@ def create_dict_from_excel(filepath):
     stock_width = extract_from_excel(filepath, "StockWidth")
     stock_thickness = extract_from_excel(filepath, "StockThickness")
 
+    if rfq_generate == True:
+        errors = validate_excel_data(part_number, hardware_or_supplies, assy_for, length, thickness, width, weight, qty_reqd, stock_length, stock_width, stock_thickness)
+    else: 
+        errors = validate_excel_data(part_number, hardware_or_supplies, assy_for, length, thickness, width, weight, qty_reqd, stock_length, stock_width, stock_thickness, rfq_gen=False)
+    
     my_dict = {}
     p = 1
+    if errors:
+        return None
+    else:
+        for a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, q, r, s in zip(
+            part_number,
+            description,
+            length,
+            thickness,
+            width,
+            weight,
+            material,
+            finish_code,
+            heat_treat,
+            drawing_number,
+            drawing_revision,
+            qty_reqd,
+            pl_rev,
+            assy_for,
+            hardware_or_supplies,
+            stock_length,
+            stock_width,
+            stock_thickness,
+        ):  # noqa: E741
+            a = f"Tool - {p}" if isinstance(a, float) and math.isnan(a) else a.strip() if isinstance(a, str) else a
+            b = None if isinstance(b, float) and math.isnan(b) else b.strip() if isinstance(b, str) else b
+            c = 0.00 if isinstance(c, float) and math.isnan(c) else c
+            d = 0.00 if isinstance(d, float) and math.isnan(d) else d
+            e = 0.00 if isinstance(e, float) and math.isnan(e) else e
+            f = 0.00 if isinstance(f, float) and math.isnan(f) else f
+            g = None if isinstance(g, float) and math.isnan(g) else g.strip() if isinstance(g, str) else g
+            h = None if isinstance(h, float) and math.isnan(h) else h.strip() if isinstance(h, str) else h
+            i = None if isinstance(i, float) and math.isnan(i) else i.strip() if isinstance(i, str) else i
+            j = None if isinstance(j, float) and math.isnan(j) else j.strip() if isinstance(j, str) else j
+            k = None if isinstance(k, float) and math.isnan(k) else k.strip() if isinstance(k, str) else k
+            l = None if isinstance(l, float) and math.isnan(l) else l.strip() if isinstance(l, str) else l  # noqa: E741
+            m = None if isinstance(m, float) and math.isnan(m) else m.strip() if isinstance(m, str) else m
+            n = None if isinstance(n, float) and math.isnan(n) else n.strip() if isinstance(n, str) else n
+            o = None if isinstance(o, float) and math.isnan(o) else o.strip() if isinstance(o, str) else o
+            q = 0.00 if isinstance(q, float) and math.isnan(q) else q
+            r = 0.00 if isinstance(r, float) and math.isnan(r) else r
+            s = 0.00 if isinstance(s, float) and math.isnan(s) else s
+            p += 1
+            my_dict[a] = (b, c, d, e, f, g, h, i, j, k, l, m, n, o, q, r, s)
 
-    for a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, q, r, s in zip(
-        part_number,
-        description,
-        length,
-        thickness,
-        width,
-        weight,
-        material,
-        finish_code,
-        heat_treat,
-        drawing_number,
-        drawing_revision,
-        qty_reqd,
-        pl_rev,
-        assy_for,
-        hardware_or_supplies,
-        stock_length,
-        stock_width,
-        stock_thickness,
-    ):  # noqa: E741
-        a = f"Tool - {p}" if isinstance(a, float) and math.isnan(a) else a
-        b = None if isinstance(b, float) and math.isnan(b) else b
-        c = 0.00 if isinstance(c, float) and math.isnan(c) else c
-        d = 0.00 if isinstance(d, float) and math.isnan(d) else d
-        e = 0.00 if isinstance(e, float) and math.isnan(e) else e
-        f = 0.00 if isinstance(f, float) and math.isnan(f) else f
-        g = None if isinstance(g, float) and math.isnan(g) else g
-        h = None if isinstance(h, float) and math.isnan(h) else h
-        i = None if isinstance(i, float) and math.isnan(i) else i
-        j = None if isinstance(j, float) and math.isnan(j) else j
-        k = None if isinstance(k, float) and math.isnan(k) else k
-        l = None if isinstance(l, float) and math.isnan(l) else l  # noqa: E741
-        m = None if isinstance(m, float) and math.isnan(m) else m
-        n = None if isinstance(n, float) and math.isnan(n) else n
-        o = None if isinstance(o, float) and math.isnan(o) else o
-        q = 0.00 if isinstance(q, float) and math.isnan(q) else q
-        r = 0.00 if isinstance(r, float) and math.isnan(r) else r
-        s = 0.00 if isinstance(s, float) and math.isnan(s) else s
-        p += 1
-        my_dict[a] = (b, c, d, e, f, g, h, i, j, k, l, m, n, o, q, r, s)
-
-    return my_dict
+        return my_dict
 
 
 def pk_info_dict(info_dict):
@@ -137,8 +193,8 @@ def pk_info_dict(info_dict):
                 pk = m.get_or_create_item(
                     part_number=f"{key} - OP Finish",
                     item_type_fk=5,
-                    comment=value[6],
-                    purchase_order_comment=value[6],
+                    comment=f"Material: {value[5]} \n" + value[6] if value[5] else value[6],
+                    purchase_order_comment=f"Material: {value[5]} \n" + value[6] if value[5] else value[6],
                     inventoriable=0,
                     only_create=1,
                     cert_reqd_by_supplier=1,
@@ -159,8 +215,8 @@ def pk_info_dict(info_dict):
                     part_number=f"{key} - OP HT",
                     item_type_fk=5,
                     description=value[7],
-                    comment=value[7],
-                    purchase_order_comment=value[7],
+                    comment=f"Material: {value[5]} \n" + value[7] if value[5] else value[7],
+                    purchase_order_comment=f"Material: {value[5]} \n" + value[7] if value[5] else value[7],
                     inventoriable=0,
                     only_create=1,
                     cert_reqd_by_supplier=1,

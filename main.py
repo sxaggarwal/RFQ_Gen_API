@@ -372,339 +372,355 @@ class RfqGen(tk.Tk):
         if self.customer_select_box.get() and self.file_path_PR_entry.get(
             0
         ):  # checking if user uploaded the part request excel file and selected the customer or not
-            party_pk = self.party_pk  # getting the pk of the selected customer
-            # getting address details for the selected customer
-            billing_details, state, country = self.data_base_conn.get_address(party_pk)
-            customer_rfq_number = (
-                self.rfq_number_text.get()
-            )  # the customer rfq number that user enters
-            # Getting current date, inquiry date and due date
-            inquiry_date = self.inquiry_date_box.get()
-            due_date = self.due_date_box.get()
-            current_date = datetime.date.today()
-            if current_date:
-                formatted_date = current_date.strftime("%m-%d-%Y")
-                current_date_formatted = f"{formatted_date} 12:00:00 AM"
-            else:
-                current_date_formatted = None
-            if inquiry_date:
-                inq_date = f"{inquiry_date} 12:00:00 AM"
-            else:
-                inq_date = None
-
-            if due_date:
-                due_date_formated = f"{due_date} 12:00:00 AM"
-            else:
-                due_date_formated = None
-            if self.buyer_select_box.get():
-                buyer_fk = self.buyer_dict[self.buyer_select_box.get()]
-            else:
-                buyer_fk = None
-            if update_rfq_pk:
-                rfq_pk = update_rfq_pk  # If the user wants to update any RFQ then the RFQ PK is set to the RFQ number that user wants to update
-            else:
-                rfq_pk = self.data_base_conn.insert_into_rfq(
-                    party_pk,
-                    billing_details,
-                    state,
-                    country,
-                    customer_rfq_number=customer_rfq_number,
-                    buyer_fk=buyer_fk,
-                    inquiry_date=inq_date,
-                    due_date=due_date_formated,
-                    create_date=current_date_formatted,
-                )  # creating the rfq with selected customer details
-            path_dict = (
-                {}
-            )  # dictionary with file path as key and the pk of the document group
-            user_selected_file_paths = list(
-                self.file_path_PR_entry.get(0, tk.END)
-                + self.file_path_PL_entry.get(0, tk.END)
-            )  # making a list of file paths that user uploaded
-            y = 1
-            count = 1
             info_dict = create_dict_from_excel(
                 self.file_path_PR_entry.get(0, tk.END)[0]
-            )  # returns a dict with the dimensional and other details as values and part number as key
-            my_dict = pk_info_dict(
-                info_dict
-            )  # returns a dict with part_number as key and mat_pk, ht_pk, fin_pk as values
-            item_pk_dict = {}  # {"PartNumber": ItemPK}
-            restricted = False
-            quote_pk_dict = {}
-            loading_screen.set_progress(10)
-            ct = 20
-            for key, value in info_dict.items():
-                if value[13] is None or value[13] == "Tooling - Manufactured":
-                    if (
-                        self.itar_restricted_var.get()
-                    ):  # checking if the user clicked on Restricted box or not and based on that destination path is decided
-                        destination_path = (
-                            rf"y:\PDM\Restricted\{self.customer_select_box.get()}\{key}"
-                        )
-                        restricted = True
-                    else:
-                        destination_path = rf"y:\PDM\Non-restricted\{self.customer_select_box.get()}\{key}"
+            )# returns a dict with the dimensional and other details as values and part number as key
+            if info_dict is not None:
+                party_pk = self.party_pk  # getting the pk of the selected customer
+                # getting address details for the selected customer
+                billing_details, state, country = self.data_base_conn.get_address(party_pk)
+                customer_rfq_number = (
+                    self.rfq_number_text.get()
+                )  # the customer rfq number that user enters
+                # Getting current date, inquiry date and due date
+                inquiry_date = self.inquiry_date_box.get()
+                due_date = self.due_date_box.get()
+                current_date = datetime.date.today()
+                if current_date:
+                    formatted_date = current_date.strftime("%m-%d-%Y")
+                    current_date_formatted = f"{formatted_date} 12:00:00 AM"
+                else:
+                    current_date_formatted = None
+                if inquiry_date:
+                    inq_date = f"{inquiry_date} 12:00:00 AM"
+                else:
+                    inq_date = None
 
-                    for file in user_selected_file_paths:
-                        # folder is get or created and file is copied to this folder
-                        file_path_to_add_to_rfq = transfer_file_to_folder(
-                            destination_path, file
-                        )
-                        path = file_path_to_add_to_rfq.lower()
+                if due_date:
+                    due_date_formated = f"{due_date} 12:00:00 AM"
+                else:
+                    due_date_formated = None
+                if self.buyer_select_box.get():
+                    buyer_fk = self.buyer_dict[self.buyer_select_box.get()]
+                else:
+                    buyer_fk = None
+                if update_rfq_pk:
+                    rfq_pk = update_rfq_pk  # If the user wants to update any RFQ then the RFQ PK is set to the RFQ number that user wants to update
+                else:
+                    rfq_pk = self.data_base_conn.insert_into_rfq(
+                        party_pk,
+                        billing_details,
+                        state,
+                        country,
+                        customer_rfq_number=customer_rfq_number,
+                        buyer_fk=buyer_fk,
+                        inquiry_date=inq_date,
+                        due_date=due_date_formated,
+                        create_date=current_date_formatted,
+                    )  # creating the rfq with selected customer details
+                path_dict = (
+                    {}
+                )  # dictionary with file path as key and the pk of the document group
+                user_selected_file_paths = list(
+                    self.file_path_PR_entry.get(0, tk.END)
+                    + self.file_path_PL_entry.get(0, tk.END)
+                )  # making a list of file paths that user uploaded
+                y = 1
+                count = 1
+            
+                my_dict = pk_info_dict(
+                    info_dict
+                )  # returns a dict with part_number as key and mat_pk, ht_pk, fin_pk as values
+                item_pk_dict = {}  # {"PartNumber": ItemPK}
+                restricted = False
+                quote_pk_dict = {}
+                loading_screen.set_progress(10)
+                ct = 20
+                for key, value in info_dict.items():
+                    if value[13] is None or value[13] == "Tooling - Manufactured":
                         if (
-                            "_pl_" in path
-                            or "spdl" in path
-                            or "psdl" in path
-                            or "pl" in os.path.basename(path)
-                        ):
-                            path_dict[file_path_to_add_to_rfq] = 26
-                        elif "dwg" in path or "drw" in path:
-                            path_dict[file_path_to_add_to_rfq] = 27
-                        elif "step" in path or "stp" in path:
-                            path_dict[file_path_to_add_to_rfq] = 30
-                        elif "zsp" in path or "speco" in path:
-                            path_dict[file_path_to_add_to_rfq] = 33
-                        elif ".cat" in path:
-                            path_dict[file_path_to_add_to_rfq] = 16
+                            self.itar_restricted_var.get()
+                        ):  # checking if the user clicked on Restricted box or not and based on that destination path is decided
+                            destination_path = (
+                                rf"y:\PDM\Restricted\{self.customer_select_box.get()}\{key}"
+                            )
+                            restricted = True
                         else:
-                            path_dict[file_path_to_add_to_rfq] = None
+                            destination_path = rf"y:\PDM\Non-restricted\{self.customer_select_box.get()}\{key}"
 
-                    # Uploading documents to the RFQ with a counter so that the same document is not uploaded more than once
-                    for file, pk in path_dict.items():
-                        if count == 1:
+                        for file in user_selected_file_paths:
+                            # folder is get or created and file is copied to this folder
+                            file_path_to_add_to_rfq = transfer_file_to_folder(
+                                destination_path, file
+                            )
+                            path = file_path_to_add_to_rfq.lower()
+                            if (
+                                "_pl_" in path
+                                or "spdl" in path
+                                or "psdl" in path
+                                or "pl" in os.path.basename(path)
+                            ):
+                                path_dict[file_path_to_add_to_rfq] = 26
+                            elif "dwg" in path or "drw" in path:
+                                path_dict[file_path_to_add_to_rfq] = 27
+                            elif "step" in path or "stp" in path:
+                                path_dict[file_path_to_add_to_rfq] = 30
+                            elif "zsp" in path or "speco" in path:
+                                path_dict[file_path_to_add_to_rfq] = 33
+                            elif ".cat" in path:
+                                path_dict[file_path_to_add_to_rfq] = 16
+                            else:
+                                path_dict[file_path_to_add_to_rfq] = None
+
+                        # Uploading documents to the RFQ with a counter so that the same document is not uploaded more than once
+                        for file, pk in path_dict.items():
+                            if count == 1:
+                                if restricted:
+                                    self.data_base_conn.upload_documents(
+                                        file,
+                                        rfq_fk=rfq_pk,
+                                        document_type_fk=6,
+                                        secure_document=1,
+                                        document_group_pk=pk,
+                                    )
+                                else:
+                                    self.data_base_conn.upload_documents(
+                                        file,
+                                        rfq_fk=rfq_pk,
+                                        document_type_fk=6,
+                                        document_group_pk=pk,
+                                    )
+                        count += 1
+                        # searching for the part on MIE Trak and returns the PK, if the part doesn't exist then it creates an item and returns the pk
+                        if (
+                            value[13] == "Tooling - Manufactured"
+                        ):  # NOTE: This is not yet done
+                            item_pk = self.data_base_conn.get_or_create_item(
+                                key,
+                                description=value[0],
+                                purchase=0,
+                                service_item=0,
+                                manufactured_item=1,
+                                item_type_fk=7,
+                            )
+                        else:
+                            item_pk = self.data_base_conn.get_or_create_item(
+                                key,
+                                description=value[0],
+                                purchase=0,
+                                service_item=0,
+                                manufactured_item=1,
+                            )
+                        item_pk_dict[key] = item_pk
+                        # uploading the documents of the item or part
+                        matching_paths = {
+                            path: pk for path, pk in path_dict.items() if key in path
+                        }
+                        for url, pk in matching_paths.items():
                             if restricted:
                                 self.data_base_conn.upload_documents(
-                                    file,
-                                    rfq_fk=rfq_pk,
-                                    document_type_fk=6,
+                                    url,
+                                    item_fk=item_pk,
+                                    document_type_fk=2,
                                     secure_document=1,
                                     document_group_pk=pk,
                                 )
                             else:
                                 self.data_base_conn.upload_documents(
-                                    file,
-                                    rfq_fk=rfq_pk,
-                                    document_type_fk=6,
+                                    url,
+                                    item_fk=item_pk,
+                                    document_type_fk=2,
                                     document_group_pk=pk,
                                 )
-                    count += 1
-                    # searching for the part on MIE Trak and returns the PK, if the part doesn't exist then it creates an item and returns the pk
-                    if (
-                        value[13] == "Tooling - Manufactured"
-                    ):  # NOTE: This is not yet done
-                        item_pk = self.data_base_conn.get_or_create_item(
-                            key,
-                            description=value[0],
-                            purchase=0,
-                            service_item=0,
-                            manufactured_item=1,
-                            item_type_fk=7,
+
+                        # creating a quote for the Part and getting QuotePk
+                        quote_pk = self.data_base_conn.create_quote(
+                            party_pk, item_pk, 0, key
                         )
-                    else:
-                        item_pk = self.data_base_conn.get_or_create_item(
-                            key,
-                            description=value[0],
-                            purchase=0,
-                            service_item=0,
-                            manufactured_item=1,
+                        quote_pk_dict[key] = (
+                            quote_pk  # creating a dictionary with part as key and quote pk as value
                         )
-                    item_pk_dict[key] = item_pk
-                    # uploading the documents of the item or part
-                    matching_paths = {
-                        path: pk for path, pk in path_dict.items() if key in path
-                    }
-                    for url, pk in matching_paths.items():
-                        if restricted:
-                            self.data_base_conn.upload_documents(
-                                url,
-                                item_fk=item_pk,
-                                document_type_fk=2,
-                                secure_document=1,
-                                document_group_pk=pk,
+                        self.data_base_conn.add_operation_to_quote(
+                            quote_pk
+                        )  # adds the operation template 494 to the quotes
+
+                        a = [
+                            6,
+                            21,
+                            22,
+                        ]  # Sequence number in Operations for IssueMat, HT, FIN resp
+                        quote_assembly_fk = (
+                            []
+                        )  # list for storing the Quote Assembly PK for the above sequence number of a quote
+
+                        for x in a:
+                            quote_assembly_pk = self.quote_assembly_table.get(
+                                "QuoteAssemblyPK", QuoteFK=quote_pk, SequenceNumber=x
                             )
-                        else:
-                            self.data_base_conn.upload_documents(
-                                url,
-                                item_fk=item_pk,
-                                document_type_fk=2,
-                                document_group_pk=pk,
-                            )
+                            quote_assembly_fk.append(
+                                quote_assembly_pk[0][0]
+                            )  # list of Quote Assembly pk in order MAT, HT, FIN
 
-                    # creating a quote for the Part and getting QuotePk
-                    quote_pk = self.data_base_conn.create_quote(
-                        party_pk, item_pk, 0, key
-                    )
-                    quote_pk_dict[key] = (
-                        quote_pk  # creating a dictionary with part as key and quote pk as value
-                    )
-                    self.data_base_conn.add_operation_to_quote(
-                        quote_pk
-                    )  # adds the operation template 494 to the quotes
+                        # creating a Bill of Material for a quote
+                        if key in my_dict:
+                            dict_values = my_dict[key]
+                            for j, k, l in zip(  # noqa: E741
+                                dict_values, quote_assembly_fk, a
+                            ):  # noqa: E741
+                                if j is not None and l == 6:
+                                    self.data_base_conn.create_bom_quote(
+                                        quote_pk,
+                                        j,
+                                        k,
+                                        l,
+                                        y,
+                                        part_length=value[14],
+                                        part_width=value[15],
+                                        thickness=value[16],
+                                    )
+                                    y += 1
+                                elif j is not None:
+                                    self.data_base_conn.create_bom_quote(
+                                        quote_pk,
+                                        j,
+                                        k,
+                                        l,
+                                        y,
+                                        part_length=value[1],
+                                        part_width=value[3],
+                                        thickness=value[2],
+                                    )
+                                    y += 1
 
-                    a = [
-                        6,
-                        21,
-                        22,
-                    ]  # Sequence number in Operations for IssueMat, HT, FIN resp
-                    quote_assembly_fk = (
-                        []
-                    )  # list for storing the Quote Assembly PK for the above sequence number of a quote
-
-                    for x in a:
-                        quote_assembly_pk = self.quote_assembly_table.get(
-                            "QuoteAssemblyPK", QuoteFK=quote_pk, SequenceNumber=x
-                        )
-                        quote_assembly_fk.append(
-                            quote_assembly_pk[0][0]
-                        )  # list of Quote Assembly pk in order MAT, HT, FIN
-
-                    # creating a Bill of Material for a quote
-                    if key in my_dict:
-                        dict_values = my_dict[key]
-                        for j, k, l in zip(  # noqa: E741
-                            dict_values, quote_assembly_fk, a
-                        ):  # noqa: E741
-                            if j is not None and l == 6:
-                                self.data_base_conn.create_bom_quote(
-                                    quote_pk,
-                                    j,
-                                    k,
-                                    l,
-                                    y,
-                                    part_length=value[14],
-                                    part_width=value[15],
-                                    thickness=value[16],
+                            if dict_values[2]:
+                                op_finish_pk = dict_values[2]
+                                op_part_number = f"{key} - OP Finish"
+                                finish_description = value[6]
+                                self.create_finish_router(
+                                    finish_description, op_finish_pk, op_part_number
                                 )
-                                y += 1
-                            elif j is not None:
-                                self.data_base_conn.create_bom_quote(
-                                    quote_pk,
-                                    j,
-                                    k,
-                                    l,
-                                    y,
-                                    part_length=value[1],
-                                    part_width=value[3],
-                                    thickness=value[2],
-                                )
-                                y += 1
 
-                        if dict_values[2]:
-                            op_finish_pk = dict_values[2]
-                            op_part_number = f"{key} - OP Finish"
-                            finish_description = value[6]
-                            self.create_finish_router(
-                                finish_description, op_finish_pk, op_part_number
-                            )
-
-                    # Inserting dimensional and other values to the item table for a part and attaching Document to OP, HT, FIN
-                    if key in info_dict:
-                        dict_values = [
-                            value[1],
-                            value[2],
-                            value[3],
-                            value[4],
-                            value[8],
-                            value[9],
-                            value[11],
-                            value[14],
-                            value[15],
-                            value[16],
-                        ]
-                        self.data_base_conn.insert_part_details_in_item(
-                            item_pk, key, dict_values
-                        )
-                        pk_value = my_dict[key]
-                        for j in pk_value[1:]:
-                            if j:
-                                self.data_base_conn.insert_part_details_in_item(
-                                    j, key, dict_values
-                                )
-                                for url, pk in matching_paths.items():
-                                    if restricted:
-                                        self.data_base_conn.upload_documents(
-                                            url,
-                                            item_fk=j,
-                                            document_type_fk=2,
-                                            secure_document=1,
-                                            document_group_pk=pk,
-                                            print_with_purchase_order=1,
-                                        )
-                                    else:
-                                        self.data_base_conn.upload_documents(
-                                            url,
-                                            item_fk=j,
-                                            document_type_fk=2,
-                                            document_group_pk=pk,
-                                            print_with_purchase_order=1,
-                                        )
-                        if pk_value[0]:
+                        # Inserting dimensional and other values to the item table for a part and attaching Document to OP, HT, FIN
+                        if key in info_dict:
+                            dict_values = [
+                                value[1],
+                                value[2],
+                                value[3],
+                                value[4],
+                                value[8],
+                                value[9],
+                                value[11],
+                                value[14],
+                                value[15],
+                                value[16],
+                            ]
                             self.data_base_conn.insert_part_details_in_item(
-                                pk_value[0], key, dict_values, item_type="Material"
+                                item_pk, key, dict_values
                             )
+                            pk_value = my_dict[key]
+                            for j in pk_value[1:]:
+                                if j:
+                                    self.data_base_conn.insert_part_details_in_item(
+                                        j, key, dict_values
+                                    )
+                                    for url, pk in matching_paths.items():
+                                        if restricted:
+                                            self.data_base_conn.upload_documents(
+                                                url,
+                                                item_fk=j,
+                                                document_type_fk=2,
+                                                secure_document=1,
+                                                document_group_pk=pk,
+                                                print_with_purchase_order=1,
+                                            )
+                                        else:
+                                            self.data_base_conn.upload_documents(
+                                                url,
+                                                item_fk=j,
+                                                document_type_fk=2,
+                                                document_group_pk=pk,
+                                                print_with_purchase_order=1,
+                                            )
+                            if pk_value[0]:
+                                self.data_base_conn.insert_part_details_in_item(
+                                    pk_value[0], key, dict_values, item_type="Material"
+                                )
 
-                else:
-                    # if hardware or tooling then adding it to the BOM of its Assembly part accordingly
-                    part_num = value[12]
-                    fk = quote_pk_dict.get(part_num)
-                    if value[13] == "Hardware":
-                        quote_assembly_pk = self.quote_assembly_table.get(
-                            "QuoteAssemblyPK", QuoteFK=fk, SequenceNumber=24
-                        )
-                        # item_fk = self.data_base_conn.get_or_create_item(key, item_type_fk=3, description=value[0], calculation_type_fk=12, purchase_account_fk=130, cogs_acc_fk=130, mps_item=0, forecast_on_mrp=0,mps_on_mrp=0,service_item=0,ship_loose=0,bulk_ship=0)
-                        item_fk = check_and_create_tooling(value[0])
-                        self.data_base_conn.create_bom_quote(
-                            fk, item_fk, quote_assembly_pk[0][0], 24, y
-                        )
-                        y += 1
-                    elif value[13] == "Tooling":
-                        quote_assembly_pk = self.quote_assembly_table.get(
-                            "QuoteAssemblyPK", QuoteFK=fk, SequenceNumber=8
-                        )
-                        item_fk = self.data_base_conn.get_or_create_item(
-                            key,
-                            description=value[0],
-                            item_type_fk=7,
-                            mps_item=0,
-                            purchase=0,
-                            forecast_on_mrp=0,
-                            mps_on_mrp=0,
-                            service_item=0,
-                            ship_loose=0,
-                            bulk_ship=0,
-                            can_not_create_work_order=1,
-                            can_not_invoice=1,
-                            manufactured_item=1,
-                        )
-                        self.data_base_conn.create_bom_quote(
-                            fk, item_fk, quote_assembly_pk[0][0], 8, y
-                        )
-                        y += 1
-                loading_screen.set_progress(ct)
-                if ct < 90:
-                    ct += 10
+                    else:
+                        # if hardware or tooling then adding it to the BOM of its Assembly part accordingly
+                        part_num = value[12]
+                        fk = quote_pk_dict.get(part_num)
+                        if value[13] == "Hardware":
+                            quote_assembly_pk = self.quote_assembly_table.get(
+                                "QuoteAssemblyPK", QuoteFK=fk, SequenceNumber=24
+                            )
+                            # item_fk = self.data_base_conn.get_or_create_item(key, item_type_fk=3, description=value[0], calculation_type_fk=12, purchase_account_fk=130, cogs_acc_fk=130, mps_item=0, forecast_on_mrp=0,mps_on_mrp=0,service_item=0,ship_loose=0,bulk_ship=0)
+                            item_fk = check_and_create_tooling(value[0])
+                            self.data_base_conn.create_bom_quote(
+                                fk, item_fk, quote_assembly_pk[0][0], 24, y
+                            )
+                            y += 1
+                        elif value[13] == "Tooling":
+                            quote_assembly_pk = self.quote_assembly_table.get(
+                                "QuoteAssemblyPK", QuoteFK=fk, SequenceNumber=8
+                            )
+                            item_fk = self.data_base_conn.get_or_create_item(
+                                key,
+                                description=value[0],
+                                item_type_fk=7,
+                                mps_item=0,
+                                purchase=0,
+                                forecast_on_mrp=0,
+                                mps_on_mrp=0,
+                                service_item=0,
+                                ship_loose=0,
+                                bulk_ship=0,
+                                can_not_create_work_order=1,
+                                can_not_invoice=1,
+                                manufactured_item=1,
+                            )
+                            self.data_base_conn.create_bom_quote(
+                                fk, item_fk, quote_assembly_pk[0][0], 8, y
+                            )
+                            y += 1
+                    loading_screen.set_progress(ct)
+                    if ct < 90:
+                        ct += 10
 
-            self.create_rfq(
-                quote_pk_dict, item_pk_dict, rfq_pk, info_dict
-            )  # checking if the Assy or Detail and creating the line item and adding quotes of assembly to the BOM of Assy Line Quotes
+                self.create_rfq(
+                    quote_pk_dict, item_pk_dict, rfq_pk, info_dict
+                )  # checking if the Assy or Detail and creating the line item and adding quotes of assembly to the BOM of Assy Line Quotes
 
-            for value in quote_pk_dict.values():
-                self.data_base_conn.create_quote_assembly_formula_variable(
-                    value
-                )  # Inserting the formulas and variables in the Quote Assembly
-            loading_screen.set_progress(100)
-            messagebox.showinfo(
-                "Success", f"RFQ generated successfully! RFQ Number: {rfq_pk}"
-            )
-            self.customer_select_box.set("")
-            self.buyer_select_box.set("")
-            self.customer_info_text.delete(1.0, tk.END)
-            self.file_path_PL_entry.delete(0, tk.END)
-            self.file_path_PR_entry.delete(0, tk.END)
-            self.rfq_number_text.delete(0, tk.END)
-            self.inquiry_date_box.delete(0, tk.END)
-            self.due_date_box.delete(0, tk.END)
+                for value in quote_pk_dict.values():
+                    self.data_base_conn.create_quote_assembly_formula_variable(
+                        value
+                    )  # Inserting the formulas and variables in the Quote Assembly
+                loading_screen.set_progress(100)
+                messagebox.showinfo(
+                    "Success", f"RFQ generated successfully! RFQ Number: {rfq_pk}"
+                )
+                self.customer_select_box.set("")
+                self.buyer_select_box.set("")
+                self.customer_info_text.delete(1.0, tk.END)
+                self.file_path_PL_entry.delete(0, tk.END)
+                self.file_path_PR_entry.delete(0, tk.END)
+                self.rfq_number_text.delete(0, tk.END)
+                self.inquiry_date_box.delete(0, tk.END)
+                self.due_date_box.delete(0, tk.END)
+            else:
+                self.loading_screen.destroy()
+                messagebox.showerror(
+                    "ERROR", "Edit Excel File and try Again"
+                )
+                self.customer_select_box.set("")
+                self.buyer_select_box.set("")
+                self.customer_info_text.delete(1.0, tk.END)
+                self.file_path_PR_entry.delete(0, tk.END)
+                self.file_path_PL_entry.delete(0, tk.END)
+                self.rfq_number_text.delete(0, tk.END)
+                self.inquiry_date_box.delete(0, tk.END)
+                self.due_date_box.delete(0, tk.END)
+
         else:
             self.loading_screen.destroy()
             messagebox.showerror(
@@ -910,7 +926,7 @@ class RfqGen(tk.Tk):
                 + self.file_path_PL_entry.get(0, tk.END)
             )
             info_dict = create_dict_from_excel(
-                self.file_path_PR_entry.get(0, tk.END)[0]
+                self.file_path_PR_entry.get(0, tk.END)[0], rfq_generate=False
             )
             path_dict = {}
             restricted = False
