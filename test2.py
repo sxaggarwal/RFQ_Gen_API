@@ -5,7 +5,7 @@ from src.schema import _get_schema
 quote_assembly_table = TableManger("QuoteAssembly")
 quote_assembly_formula_variable_table = TableManger(
             "QuoteAssemblyFormulaVariable"
-        )
+        ) 
 
 # all_columns = _get_schema("QuoteAssembly")
 # ret_list = []
