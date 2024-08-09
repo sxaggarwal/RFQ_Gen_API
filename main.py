@@ -12,6 +12,7 @@ from src.helper import (
 )
 import os
 import datetime
+import re
 
 
 class LoadingScreen(tk.Toplevel):
@@ -436,7 +437,11 @@ class RfqGen(tk.Tk):
                 quote_pk_dict = {}
                 loading_screen.set_progress(10)
                 ct = 20
-                for key, value in info_dict.items():
+                for new_key, value in info_dict.items():
+                    if self.ends_with_suffix(new_key) is None:
+                        key = new_key
+                    else:
+                        key = new_key.split("_____")[0]
                     if value[13] is None or value[13] == "Tooling - Manufactured":
                         if (
                             self.itar_restricted_var.get()
@@ -601,50 +606,50 @@ class RfqGen(tk.Tk):
                                 )
 
                         # Inserting dimensional and other values to the item table for a part and attaching Document to OP, HT, FIN
-                        if key in info_dict:
-                            dict_values = [
-                                value[1],
-                                value[2],
-                                value[3],
-                                value[4],
-                                value[8],
-                                value[9],
-                                value[11],
-                                value[14],
-                                value[15],
-                                value[16],
-                            ]
-                            self.data_base_conn.insert_part_details_in_item(
-                                item_pk, key, dict_values
-                            )
-                            pk_value = my_dict[key]
-                            for j in pk_value[1:]:
-                                if j:
-                                    self.data_base_conn.insert_part_details_in_item(
-                                        j, key, dict_values
-                                    )
-                                    for url, pk in matching_paths.items():
-                                        if restricted:
-                                            self.data_base_conn.upload_documents(
-                                                url,
-                                                item_fk=j,
-                                                document_type_fk=2,
-                                                secure_document=1,
-                                                document_group_pk=pk,
-                                                print_with_purchase_order=1,
-                                            )
-                                        else:
-                                            self.data_base_conn.upload_documents(
-                                                url,
-                                                item_fk=j,
-                                                document_type_fk=2,
-                                                document_group_pk=pk,
-                                                print_with_purchase_order=1,
-                                            )
-                            if pk_value[0]:
+                        # if key in info_dict:
+                        dict_values1 = [
+                            value[1],
+                            value[2],
+                            value[3],
+                            value[4],
+                            value[8],
+                            value[9],
+                            value[11],
+                            value[14],
+                            value[15],
+                            value[16],
+                        ]
+                        self.data_base_conn.insert_part_details_in_item(
+                            item_pk, key, dict_values1
+                        )
+                        pk_value = my_dict[key]
+                        for j in pk_value[1:]:
+                            if j:
                                 self.data_base_conn.insert_part_details_in_item(
-                                    pk_value[0], key, dict_values, item_type="Material"
+                                    j, key, dict_values1
                                 )
+                                for url, pk in matching_paths.items():
+                                    if restricted:
+                                        self.data_base_conn.upload_documents(
+                                            url,
+                                            item_fk=j,
+                                            document_type_fk=2,
+                                            secure_document=1,
+                                            document_group_pk=pk,
+                                            print_with_purchase_order=1,
+                                        )
+                                    else:
+                                        self.data_base_conn.upload_documents(
+                                            url,
+                                            item_fk=j,
+                                            document_type_fk=2,
+                                            document_group_pk=pk,
+                                            print_with_purchase_order=1,
+                                        )
+                        if pk_value[0]:
+                            self.data_base_conn.insert_part_details_in_item(
+                                pk_value[0], key, dict_values1, item_type="Material"
+                            )
 
                     else:
                         # if hardware or tooling then adding it to the BOM of its Assembly part accordingly
@@ -761,6 +766,9 @@ class RfqGen(tk.Tk):
             self.data_base_conn.create_router_work_center(pk, router_pk, i)
             i += 1
 
+    def ends_with_suffix(self, s):
+        return re.search(r'_____\d+$', s) is not None
+
     def process_rfq(
         self,
         quote_pk_dict,
@@ -859,7 +867,11 @@ class RfqGen(tk.Tk):
     ):
         """checks if its Assy or Detail and accordingly creates the line item and adds quotes of assembly to the BOM of Assy Line Quotes"""
         parent_quote_assembly_pk_dict = {}
-        for key, value in info_dict.items():
+        for new_key, value in info_dict.items():
+            if self.ends_with_suffix(new_key) is None:
+                key = new_key
+            else:
+                key = new_key.split("_____")[0]
             part_number = key
             # assy_for = value[12]
             quote_pk = quote_pk_dict.get(part_number)
@@ -930,7 +942,12 @@ class RfqGen(tk.Tk):
             )
             path_dict = {}
             restricted = False
-            for key, value in info_dict.items():
+            # for key, value in info_dict.items():
+            for new_key, value in info_dict.items():
+                if self.ends_with_suffix(new_key) is None:
+                    key = new_key
+                else:
+                    key = new_key.split("_____")[0]
                 if self.customer_select_box.get():
                     if (
                         self.itar_restricted_var.get()

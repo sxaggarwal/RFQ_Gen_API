@@ -6,6 +6,7 @@ import shutil
 import math
 import pandas as pd
 from tkinter import messagebox
+import re
 
 def transfer_file_to_folder(folder_path: str, file_path: str) -> str:
     """Copies file from one path to another path"""
@@ -38,9 +39,9 @@ def validate_excel_data(part_number, hardware_or_supplies, assy_for, length, thi
         assy = assy if isinstance(assy, str) else None
 
         # Check for duplicate part numbers
-        if pn in part_number_set:
-            errors.append(f"Row {i + 2}: Duplicate part number '{pn}' found.")
-        part_number_set.add(pn)
+        # if pn in part_number_set:
+        #     errors.append(f"Row {i + 2}: Duplicate part number '{pn}' found.")
+        # part_number_set.add(pn)
 
         if pn is None or (isinstance(pn, float) and math.isnan(pn)):
             if not hw_or_supplies.strip().lower() == 'hardware':
@@ -143,18 +144,31 @@ def create_dict_from_excel(filepath, rfq_generate = True):
             q = 0.00 if isinstance(q, float) and math.isnan(q) else q
             r = 0.00 if isinstance(r, float) and math.isnan(r) else r
             s = 0.00 if isinstance(s, float) and math.isnan(s) else s
+
+            original_a = a 
+            suffix = 1 
+            while a in my_dict:
+                a = f"{original_a}_____{suffix}"
+                suffix += 1
+            
             p += 1
             my_dict[a] = (b, c, d, e, f, g, h, i, j, k, l, m, n, o, q, r, s)
 
         return my_dict
 
+def ends_with_suffix(s):
+    return re.search(r'____\d+$', s) is not None
 
 def pk_info_dict(info_dict):
     """Creates a dictionary with part number as key and its material pk, heat treat pk and finish pk as value"""
     item_table = TableManger("Item")
     m = MieTrak()
     my_dict = {}
-    for key, value in info_dict.items():
+    for new_key, value in info_dict.items():
+        if ends_with_suffix(new_key) is None:
+            key = new_key
+        else:
+            key = new_key.split("_____")[0]
         mat_pk = None
         fin_pk = None
         ht_pk = None
@@ -227,6 +241,12 @@ def pk_info_dict(info_dict):
                     calculation_type_fk=17,
                 )
                 ht_pk = pk
+        original_key = key
+        suffix = 1
+        while key in my_dict:
+            key = f"{original_key}_____{suffix}"
+            suffix += 1
+
         my_dict[key] = (mat_pk, ht_pk, fin_pk)
     return my_dict
 
