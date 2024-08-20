@@ -7,15 +7,21 @@ import math
 import pandas as pd
 from tkinter import messagebox
 import re
+from src.logger import getlogger
+
+LOGGER = getlogger("helper")
 
 def transfer_file_to_folder(folder_path: str, file_path: str) -> str:
     """Copies file from one path to another path"""
-    os.makedirs(folder_path, exist_ok=True)
+    try:
+        os.makedirs(folder_path, exist_ok=True)
 
-    filename = os.path.basename(file_path)  # source file path
-    destination_path = os.path.join(folder_path, filename)
-    shutil.copyfile(file_path, destination_path)
-
+        filename = os.path.basename(file_path)  # source file path
+        destination_path = os.path.join(folder_path, filename)
+        shutil.copyfile(file_path, destination_path)
+        LOGGER.info(f"file transferred {folder_path} - {file_path}")
+    except Exception as e:
+        LOGGER.error(e)
     return destination_path
 
 
@@ -62,7 +68,7 @@ def validate_excel_data(part_number, hardware_or_supplies, assy_for, length, thi
             errors.append(f"Row {i + 2}: 'Width' must be an integer, float, or blank.")
         if not (isinstance(wt, (int, float)) and not isinstance(wt, bool)) and not (isinstance(wt, float) and math.isnan(wt)):
             errors.append(f"Row {i + 2}: 'Weight' must be an integer, float, or blank.")
-        if not (isinstance(qty, (int, float)) and not isinstance(qty, bool)) and not (isinstance(qty, float) and math.isnan(qty)):
+        if not (isinstance(qty, (int, float)) and not isinstance(qty, bool)) and not (isinstance(qty, float)):
             errors.append(f"Row {i + 2}: 'Quantity Required' must be an integer, float, or blank.")
         if not (isinstance(sl, (int, float)) and not isinstance(sl, bool)) and not (isinstance(sl, float) and math.isnan(sl)):
             errors.append(f"Row {i + 2}: 'Stock Length' must be an integer, float, or blank.")
@@ -70,6 +76,8 @@ def validate_excel_data(part_number, hardware_or_supplies, assy_for, length, thi
             errors.append(f"Row {i + 2}: 'Stock Width' must be an integer, float, or blank.")
         if not (isinstance(st, (int, float)) and not isinstance(st, bool)) and not (isinstance(st, float) and math.isnan(st)):
             errors.append(f"Row {i + 2}: 'Stock Thickness' must be an integer, float, or blank.")
+        # if qty is None or (isinstance(qty, float) and math.isnan(qty)):
+        #     errors.append(f"Row {i + 2}: 'Quantity Required' must not be empty.")
      
     if errors:
         messagebox.showerror("Validation Errors", "\n".join(errors))

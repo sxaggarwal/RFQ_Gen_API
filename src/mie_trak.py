@@ -748,6 +748,8 @@ class MieTrak:
                 quote_assembly_pk = self.quote_assembly_table.get(
                     "QuoteAssemblyPK", QuoteFK=pk[1]
                 )
-                for assembly_pk in quote_assembly_pk:
-                    self.quote_assembly_table.delete(assembly_pk[0])
-                self.quote_table.delete(pk[1])
+                if quote_assembly_pk:
+                    for assembly_pk in quote_assembly_pk:
+                        self.quote_assembly_table.delete(assembly_pk[0])
+                if pk[1]:
+                    self.quote_table.delete(pk[1])

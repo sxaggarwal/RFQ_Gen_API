@@ -354,7 +354,12 @@ class RfqGen(tk.Tk):
             # entering all file paths in the listbox
             list_box.delete(0, tk.END)
             for path in self.filepaths:
-                list_box.insert(0, path)
+                if 'PDM' in path:
+                    messagebox.showerror("Error", "Dude! Files from PDM can't be uploaded")
+                    list_box.delete(0, tk.END)
+                    return
+                else:
+                    list_box.insert(0, path)
 
         except FileNotFoundError as e:
             print(f"Error during file browse: {e}")
@@ -362,6 +367,48 @@ class RfqGen(tk.Tk):
                 "File Browse Error",
                 "An error occurred during file selection. Please try again.",
             )
+
+    # def browse_files_parts_requested(self, filetype: str, list_box):
+    #     """Browse button for Part requested section, filetype only accepts -> 'All files', 'Excel files'"""
+    #     try:
+    #         if filetype == "Excel files":
+    #             filetypes = [("Excel files", "*.xlsx;*.xls")]
+    #         else:
+    #             # Select all file types
+    #             filetypes = [("All files", "*.*")]
+
+    #         # Select files
+    #         file_paths = [
+    #             filepath
+    #             for filepath in filedialog.askopenfilenames(
+    #                 title="Select Files", filetypes=filetypes
+    #             )
+    #         ]
+            
+    #         # Optionally select directories (only if "All files" is selected)
+    #         folder_paths = []
+    #         if filetype != "Excel files":
+    #             folder_paths.append(
+    #                 filedialog.askdirectory(
+    #                     title="Select Folder"
+    #                 )
+    #             )
+
+    #         # Combine file and folder paths
+    #         self.filepaths = file_paths + folder_paths
+
+    #         # Enter all file and folder paths in the listbox
+    #         list_box.delete(0, tk.END)
+    #         for path in self.filepaths:
+    #             if path:  # Ensure the path is not an empty string
+    #                 list_box.insert(0, path)
+
+    #     except FileNotFoundError as e:
+    #         print(f"Error during file browse: {e}")
+    #         messagebox.showerror(
+    #             "File Browse Error",
+    #             "An error occurred during file selection. Please try again.",
+    #         )
 
     def update_buyer_combobox(self, event=None):
         """Updates the buyer combobox when a customer is selected"""
@@ -455,6 +502,8 @@ class RfqGen(tk.Tk):
 
                         for file in user_selected_file_paths:
                             # folder is get or created and file is copied to this folder
+                            # if 'PDM' in file:
+                            #     messagebox.showerror("Error", "Dude! Upload not allowed from server.")
                             file_path_to_add_to_rfq = transfer_file_to_folder(
                                 destination_path, file
                             )
