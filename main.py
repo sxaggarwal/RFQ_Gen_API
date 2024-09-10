@@ -94,6 +94,7 @@ class AddBuyerScreen(tk.Toplevel):
             messagebox.showinfo(
                 "Success", f"Buyer created successfully! BuyerPK: {buyer_pk}"
             )
+            self.master.update_buyer_combobox()
             self.destroy()
         else:
             messagebox.showerror("ERROR", "Please Enter Name")
@@ -173,14 +174,14 @@ class RfqGen(tk.Tk):
 
         self.buyer_select_box.bind("<<ComboboxSelected>>", self.update_buyer_info)
 
-        tk.Label(self, text="Enter Customer RFQ Number: ").grid(row=7, column=0)
+        tk.Label(self, text="Enter Customer RFQ Number: ").grid(row=7, column=1)
         self.rfq_number_text = tk.Entry(self, width=50)
-        self.rfq_number_text.grid(row=8, column=0)
+        self.rfq_number_text.grid(row=8, column=1)
 
         # Entrybox for the requested parts in an Excel file. (upload for Excel file)
-        tk.Label(self, text="Parts Requested File:").grid(row=7, column=1)
+        tk.Label(self, text="Parts Requested File:").grid(row=9, column=1)
         self.file_path_PR_entry = tk.Listbox(self, height=2, width=50)
-        self.file_path_PR_entry.grid(row=8, column=1)
+        self.file_path_PR_entry.grid(row=10, column=1)
 
         browse_button_1 = tk.Button(
             self,
@@ -189,12 +190,12 @@ class RfqGen(tk.Tk):
                 "Excel files", self.file_path_PR_entry
             ),
         )
-        browse_button_1.grid(row=9, column=1)
+        browse_button_1.grid(row=11, column=1)
 
         # Selection/ Upload for PartList
-        tk.Label(self, text="Part Lists File (PL):").grid(row=7, column=2)
+        tk.Label(self, text="Part Lists File (PL):").grid(row=9, column=2)
         self.file_path_PL_entry = tk.Listbox(self, height=2, width=50)
-        self.file_path_PL_entry.grid(row=8, column=2)
+        self.file_path_PL_entry.grid(row=10, column=2)
 
         browse_button_part_list = tk.Button(
             self,
@@ -203,47 +204,62 @@ class RfqGen(tk.Tk):
                 "All files", self.file_path_PL_entry
             ),
         )
-        browse_button_part_list.grid(row=9, column=2)
+        browse_button_part_list.grid(row=11, column=2)
+
+        tk.Label(self, text='Estimating Documents:').grid(row=9, column=0)
+        self.file_path_estimating_entry = tk.Listbox(self, height=2, width=50)
+        self.file_path_estimating_entry.grid(row=10, column=0)
+
+        browse_button_estimating = tk.Button(
+            self,
+            text="Browse Files",
+            command=lambda: self.browse_files_parts_requested(
+                "All files", self.file_path_estimating_entry
+            ),
+        )
+        browse_button_estimating.grid(row=11, column=0)
+
+
 
         # Checkbox for ITAR RESTRICTED
         self.itar_restricted_var = tk.BooleanVar()
         self.itar_restricted_checkbox = tk.Checkbutton(
             self, text="ITAR RESTRICTED", variable=self.itar_restricted_var
         )
-        self.itar_restricted_checkbox.grid(row=11, column=2)
+        self.itar_restricted_checkbox.grid(row=13, column=2)
 
         # main button for generating RFQ
         generate_button = tk.Button(
             self, text="Generate RFQ", command=self.generate_rfq_with_loading_screen
         )
-        generate_button.grid(row=15, column=0)
+        generate_button.grid(row=17, column=0)
 
         # Add or Update Item button
         add_item_button = tk.Button(self, text="ADD/Update Item", command=self.add_item)
-        add_item_button.grid(row=15, column=2)
+        add_item_button.grid(row=17, column=2)
 
         # Calendar widgets for selecting Inquiry and Due dates
-        tk.Label(self, text="Enter Inquiry Date (MM/DD/YYYY): ").grid(row=10, column=0)
+        tk.Label(self, text="Enter Inquiry Date (MM/DD/YYYY): ").grid(row=12, column=0)
         self.inquiry_date_box = tk.Entry(self, width=20)
-        self.inquiry_date_box.grid(row=11, column=0)
+        self.inquiry_date_box.grid(row=13, column=0)
         cal_button = tk.Button(self, text="Cal", command=self.open_calendar)
-        cal_button.grid(row=12, column=0)
+        cal_button.grid(row=14, column=0)
 
-        tk.Label(self, text="Enter Due Date (MM/DD/YYYY): ").grid(row=10, column=1)
+        tk.Label(self, text="Enter Due Date (MM/DD/YYYY): ").grid(row=12, column=1)
         self.due_date_box = tk.Entry(self, width=20)
-        self.due_date_box.grid(row=11, column=1)
+        self.due_date_box.grid(row=13, column=1)
         cal_due_button = tk.Button(self, text="Cal", command=self.open_due_calendar)
-        cal_due_button.grid(row=12, column=1)
+        cal_due_button.grid(row=14, column=1)
 
         # Entry box for RFQ Number that needs to be updated
         tk.Label(self, text="Enter the RFQ number to be updated: ").grid(
-            row=13, column=1
+            row=15, column=1
         )
         self.update_rfq_number_text = tk.Entry(self, width=20)
-        self.update_rfq_number_text.grid(row=14, column=1)
+        self.update_rfq_number_text.grid(row=16, column=1)
 
         update_rfq_button = tk.Button(self, text="Update RFQ", command=self.update_rfq)
-        update_rfq_button.grid(row=15, column=1)
+        update_rfq_button.grid(row=17, column=1)
 
     def open_calendar(self):
         """Opens the Calendar and selects the date on double click"""
@@ -354,8 +370,8 @@ class RfqGen(tk.Tk):
             # entering all file paths in the listbox
             list_box.delete(0, tk.END)
             for path in self.filepaths:
-                if 'PDM' in path:
-                    messagebox.showerror("Error", "Dude! Files from PDM can't be uploaded")
+                if 'PDM' in path or 'Estimating' in path:
+                    messagebox.showerror("Error", "Dude! Files from PDM and Estimating can't be uploaded")
                     list_box.delete(0, tk.END)
                     return
                 else:
@@ -368,52 +384,10 @@ class RfqGen(tk.Tk):
                 "An error occurred during file selection. Please try again.",
             )
 
-    # def browse_files_parts_requested(self, filetype: str, list_box):
-    #     """Browse button for Part requested section, filetype only accepts -> 'All files', 'Excel files'"""
-    #     try:
-    #         if filetype == "Excel files":
-    #             filetypes = [("Excel files", "*.xlsx;*.xls")]
-    #         else:
-    #             # Select all file types
-    #             filetypes = [("All files", "*.*")]
-
-    #         # Select files
-    #         file_paths = [
-    #             filepath
-    #             for filepath in filedialog.askopenfilenames(
-    #                 title="Select Files", filetypes=filetypes
-    #             )
-    #         ]
-            
-    #         # Optionally select directories (only if "All files" is selected)
-    #         folder_paths = []
-    #         if filetype != "Excel files":
-    #             folder_paths.append(
-    #                 filedialog.askdirectory(
-    #                     title="Select Folder"
-    #                 )
-    #             )
-
-    #         # Combine file and folder paths
-    #         self.filepaths = file_paths + folder_paths
-
-    #         # Enter all file and folder paths in the listbox
-    #         list_box.delete(0, tk.END)
-    #         for path in self.filepaths:
-    #             if path:  # Ensure the path is not an empty string
-    #                 list_box.insert(0, path)
-
-    #     except FileNotFoundError as e:
-    #         print(f"Error during file browse: {e}")
-    #         messagebox.showerror(
-    #             "File Browse Error",
-    #             "An error occurred during file selection. Please try again.",
-    #         )
-
     def update_buyer_combobox(self, event=None):
         """Updates the buyer combobox when a customer is selected"""
         self.buyer_dict = self.data_base_conn.get_buyer_data(self.party_pk)
-        self.buyer_select_box["values"] = list(self.buyer_dict.keys())
+        self.buyer_select_box["values"] = sorted(self.buyer_dict.keys())
 
     def generate_rfq(self, loading_screen, update_rfq_pk=None):
         """Main function for generating RFQ, adding line items and creating a quote"""
@@ -473,6 +447,8 @@ class RfqGen(tk.Tk):
                     self.file_path_PR_entry.get(0, tk.END)
                     + self.file_path_PL_entry.get(0, tk.END)
                 )  # making a list of file paths that user uploaded
+
+                estimation_folder_docs = list(self.file_path_estimating_entry.get(0, tk.END))
                 y = 1
                 count = 1
             
@@ -496,17 +472,39 @@ class RfqGen(tk.Tk):
                             destination_path = (
                                 rf"y:\PDM\Restricted\{self.customer_select_box.get()}\{key}"
                             )
+                            estimation_destinatoin_path = (rf"y:\Estimating\Restricted\{self.customer_select_box.get()}\{self.rfq_number_text.get()}")
                             restricted = True
                         else:
                             destination_path = rf"y:\PDM\Non-restricted\{self.customer_select_box.get()}\{key}"
+                            estimation_destinatoin_path = (rf"y:\Estimating\Non-restricted\{self.customer_select_box.get()}\{self.rfq_number_text.get()}")
 
                         for file in user_selected_file_paths:
                             # folder is get or created and file is copied to this folder
-                            # if 'PDM' in file:
-                            #     messagebox.showerror("Error", "Dude! Upload not allowed from server.")
+
                             file_path_to_add_to_rfq = transfer_file_to_folder(
                                 destination_path, file
                             )
+                            path = file_path_to_add_to_rfq.lower()
+                            if (
+                                "_pl_" in path
+                                or "spdl" in path
+                                or "psdl" in path
+                                or "pl" in os.path.basename(path)
+                            ):
+                                path_dict[file_path_to_add_to_rfq] = 26
+                            elif "dwg" in path or "drw" in path:
+                                path_dict[file_path_to_add_to_rfq] = 27
+                            elif "step" in path or "stp" in path:
+                                path_dict[file_path_to_add_to_rfq] = 30
+                            elif "zsp" in path or "speco" in path:
+                                path_dict[file_path_to_add_to_rfq] = 33
+                            elif ".cat" in path:
+                                path_dict[file_path_to_add_to_rfq] = 16
+                            else:
+                                path_dict[file_path_to_add_to_rfq] = None
+                        
+                        for file_p in estimation_folder_docs:
+                            file_path_to_add_to_rfq = transfer_file_to_folder(estimation_destinatoin_path, file_p)
                             path = file_path_to_add_to_rfq.lower()
                             if (
                                 "_pl_" in path
@@ -711,7 +709,7 @@ class RfqGen(tk.Tk):
                             # item_fk = self.data_base_conn.get_or_create_item(key, item_type_fk=3, description=value[0], calculation_type_fk=12, purchase_account_fk=130, cogs_acc_fk=130, mps_item=0, forecast_on_mrp=0,mps_on_mrp=0,service_item=0,ship_loose=0,bulk_ship=0)
                             item_fk = check_and_create_tooling(value[0])
                             self.data_base_conn.create_bom_quote(
-                                fk, item_fk, quote_assembly_pk[0][0], 24, y
+                                fk, item_fk, quote_assembly_pk[0][0], 24, y,quantity_reqd=value[10] if value[10] else 1.00,
                             )
                             y += 1
                         elif value[13] == "Tooling":
@@ -734,7 +732,7 @@ class RfqGen(tk.Tk):
                                 manufactured_item=1,
                             )
                             self.data_base_conn.create_bom_quote(
-                                fk, item_fk, quote_assembly_pk[0][0], 8, y
+                                fk, item_fk, quote_assembly_pk[0][0], 8, y, quantity_reqd=value[10] if value[10] else 1.00,
                             )
                             y += 1
                     loading_screen.set_progress(ct)
@@ -757,6 +755,7 @@ class RfqGen(tk.Tk):
                 self.buyer_select_box.set("")
                 self.customer_info_text.delete(1.0, tk.END)
                 self.file_path_PL_entry.delete(0, tk.END)
+                self.file_path_estimating_entry.delete(0, tk.END)
                 self.file_path_PR_entry.delete(0, tk.END)
                 self.rfq_number_text.delete(0, tk.END)
                 self.inquiry_date_box.delete(0, tk.END)
@@ -771,6 +770,7 @@ class RfqGen(tk.Tk):
                 self.customer_info_text.delete(1.0, tk.END)
                 self.file_path_PR_entry.delete(0, tk.END)
                 self.file_path_PL_entry.delete(0, tk.END)
+                self.file_path_estimating_entry.delete(0, tk.END)
                 self.rfq_number_text.delete(0, tk.END)
                 self.inquiry_date_box.delete(0, tk.END)
                 self.due_date_box.delete(0, tk.END)
@@ -785,6 +785,7 @@ class RfqGen(tk.Tk):
             self.customer_info_text.delete(1.0, tk.END)
             self.file_path_PR_entry.delete(0, tk.END)
             self.file_path_PL_entry.delete(0, tk.END)
+            self.file_path_estimating_entry.delete(0, tk.END)
             self.rfq_number_text.delete(0, tk.END)
             self.inquiry_date_box.delete(0, tk.END)
             self.due_date_box.delete(0, tk.END)
@@ -1125,6 +1126,7 @@ class RfqGen(tk.Tk):
             self.customer_info_text.delete(1.0, tk.END)
             self.file_path_PL_entry.delete(0, tk.END)
             self.file_path_PR_entry.delete(0, tk.END)
+            self.file_path_estimating_entry.delete(0, tk.END)
             self.rfq_number_text.delete(0, tk.END)
         else:
             messagebox.showerror("ERROR", "Upload Parts to be added File")
@@ -1133,6 +1135,7 @@ class RfqGen(tk.Tk):
             self.customer_info_text.delete(1.0, tk.END)
             self.file_path_PR_entry.delete(0, tk.END)
             self.file_path_PL_entry.delete(0, tk.END)
+            self.file_path_estimating_entry.delete(0, tk.END)
             self.rfq_number_text.delete(0, tk.END)
 
     def update_rfq(self):

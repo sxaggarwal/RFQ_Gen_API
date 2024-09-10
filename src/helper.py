@@ -7,21 +7,16 @@ import math
 import pandas as pd
 from tkinter import messagebox
 import re
-from src.logger import getlogger
-
-LOGGER = getlogger("helper")
 
 def transfer_file_to_folder(folder_path: str, file_path: str) -> str:
     """Copies file from one path to another path"""
-    try:
-        os.makedirs(folder_path, exist_ok=True)
 
-        filename = os.path.basename(file_path)  # source file path
-        destination_path = os.path.join(folder_path, filename)
-        shutil.copyfile(file_path, destination_path)
-        LOGGER.info(f"file transferred {folder_path} - {file_path}")
-    except Exception as e:
-        LOGGER.error(e)
+    os.makedirs(folder_path, exist_ok=True)
+
+    filename = os.path.basename(file_path)  # source file path
+    destination_path = os.path.join(folder_path, filename)
+    shutil.copyfile(file_path, destination_path)
+
     return destination_path
 
 

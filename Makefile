@@ -1,6 +1,9 @@
 dev.build:
+	@echo "running updates..."
 	python -m pip install --upgrade pyinstaller
-	pyinstaller --onefile --windowed main.py
+	@echo "Running pyinstaller..."
+	pyinstaller --onefile main.py
+	@echo "completed!"
 
 dev.clean:
 	rm -rf build dist
