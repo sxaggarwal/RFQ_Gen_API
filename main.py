@@ -342,7 +342,7 @@ class RfqGen(tk.Tk):
             )
             self.party_pk = party_pk
 
-        self.update_buyer_combobox()
+        self.update_buyer_combobox() 
 
     def update_buyer_info(self, event=None):
         """Update customer information label when a Buyer is selected"""
@@ -443,12 +443,15 @@ class RfqGen(tk.Tk):
                 path_dict = (
                     {}
                 )  # dictionary with file path as key and the pk of the document group
-                user_selected_file_paths = list(
-                    self.file_path_PR_entry.get(0, tk.END)
-                    + self.file_path_PL_entry.get(0, tk.END)
-                )  # making a list of file paths that user uploaded
+                estimation_path_dict = (
+                    {}
+                )
 
-                estimation_folder_docs = list(self.file_path_estimating_entry.get(0, tk.END))
+                user_selected_file_paths = list(
+                     self.file_path_PL_entry.get(0, tk.END)
+                )  # making a list of file paths that user uploaded
+                #TODO: file path pr entry to estimation folder docs
+                estimation_folder_docs = list(self.file_path_PR_entry.get(0, tk.END) + self.file_path_estimating_entry.get(0, tk.END))
                 y = 1
                 count = 1
             
@@ -481,6 +484,7 @@ class RfqGen(tk.Tk):
                         for file in user_selected_file_paths:
                             # folder is get or created and file is copied to this folder
 
+                            #TODO: here instead of user_selected_file_path it should be estimating
                             file_path_to_add_to_rfq = transfer_file_to_folder(
                                 destination_path, file
                             )
@@ -504,6 +508,7 @@ class RfqGen(tk.Tk):
                                 path_dict[file_path_to_add_to_rfq] = None
                         
                         for file_p in estimation_folder_docs:
+                            #TODO: Create different dict for estimation folder docs.
                             file_path_to_add_to_rfq = transfer_file_to_folder(estimation_destinatoin_path, file_p)
                             path = file_path_to_add_to_rfq.lower()
                             if (
@@ -512,20 +517,21 @@ class RfqGen(tk.Tk):
                                 or "psdl" in path
                                 or "pl" in os.path.basename(path)
                             ):
-                                path_dict[file_path_to_add_to_rfq] = 26
+                                estimation_path_dict[file_path_to_add_to_rfq] = 26
                             elif "dwg" in path or "drw" in path:
-                                path_dict[file_path_to_add_to_rfq] = 27
+                                estimation_path_dict[file_path_to_add_to_rfq] = 27
                             elif "step" in path or "stp" in path:
-                                path_dict[file_path_to_add_to_rfq] = 30
+                                estimation_path_dict[file_path_to_add_to_rfq] = 30
                             elif "zsp" in path or "speco" in path:
-                                path_dict[file_path_to_add_to_rfq] = 33
+                                estimation_path_dict[file_path_to_add_to_rfq] = 33
                             elif ".cat" in path:
-                                path_dict[file_path_to_add_to_rfq] = 16
+                                estimation_path_dict[file_path_to_add_to_rfq] = 16
                             else:
-                                path_dict[file_path_to_add_to_rfq] = None
+                                estimation_path_dict[file_path_to_add_to_rfq] = None
 
                         # Uploading documents to the RFQ with a counter so that the same document is not uploaded more than once
-                        for file, pk in path_dict.items():
+                        for file, pk in estimation_path_dict.items():
+                            #TODO; Use the estiamtion folder dict to upload here
                             if count == 1:
                                 if restricted:
                                     self.data_base_conn.upload_documents(
@@ -626,9 +632,9 @@ class RfqGen(tk.Tk):
                                         k,
                                         l,
                                         y,
-                                        part_length=value[14],
-                                        part_width=value[15],
-                                        thickness=value[16],
+                                        part_length=value[1],
+                                        part_width=value[3], 
+                                        thickness=value[2],
                                     )
                                     y += 1
                                 elif j is not None:
@@ -675,24 +681,24 @@ class RfqGen(tk.Tk):
                                 self.data_base_conn.insert_part_details_in_item(
                                     j, key, dict_values1
                                 )
-                                for url, pk in matching_paths.items():
-                                    if restricted:
-                                        self.data_base_conn.upload_documents(
-                                            url,
-                                            item_fk=j,
-                                            document_type_fk=2,
-                                            secure_document=1,
-                                            document_group_pk=pk,
-                                            print_with_purchase_order=1,
-                                        )
-                                    else:
-                                        self.data_base_conn.upload_documents(
-                                            url,
-                                            item_fk=j,
-                                            document_type_fk=2,
-                                            document_group_pk=pk,
-                                            print_with_purchase_order=1,
-                                        )
+                                # for url, pk in matching_paths.items():
+                                #     if restricted:
+                                #         self.data_base_conn.upload_documents(
+                                #             url,
+                                #             item_fk=j,
+                                #             document_type_fk=2,
+                                #             secure_document=1,
+                                #             document_group_pk=pk,
+                                #             print_with_purchase_order=1,
+                                #         )
+                                #     else:
+                                #         self.data_base_conn.upload_documents(
+                                #             url,
+                                #             item_fk=j,
+                                #             document_type_fk=2,
+                                #             document_group_pk=pk,
+                                #             print_with_purchase_order=1,
+                                #         )
                         if pk_value[0]:
                             self.data_base_conn.insert_part_details_in_item(
                                 pk_value[0], key, dict_values1, item_type="Material"
@@ -800,7 +806,7 @@ class RfqGen(tk.Tk):
             for code in finish_code:
                 finish_codes_pk = self.data_base_conn.get_or_create_item(
                     part_number=code[:100],
-                    description=code,
+                    description=code[:490], #TODO: Fix this as its crossing the limit, add this to the comments.
                     inventoriable=0,
                     item_type_fk=5,
                     cert_reqd_by_supplier=1,
@@ -809,6 +815,7 @@ class RfqGen(tk.Tk):
                     purchase_account_fk=125,
                     cogs_acc_fk=125,
                     calculation_type_fk=17,
+                    comment=code
                 )
                 finish_pks.append(finish_codes_pk)
         router_pk = self.data_base_conn.create_router(item_fin_pk, part_num)
@@ -1148,7 +1155,10 @@ class RfqGen(tk.Tk):
             rfq_pk = self.update_rfq_number_text.get()
             self.data_base_conn.delete_rfq_line_pk(rfq_pk)
             loading_screen = LoadingScreen(self, max_progress=100)
-            self.generate_rfq(loading_screen, update_rfq_pk=rfq_pk)
+            Thread(
+            target=self.generate_rfq, args=(loading_screen,), kwargs={'update_rfq_pk': rfq_pk}
+            ).start()
+            # self.generate_rfq(loading_screen, update_rfq_pk=rfq_pk)
         else:
             messagebox.showerror("ERROR", "Please fill all required fields")
 
