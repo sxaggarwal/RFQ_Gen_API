@@ -1,9 +1,8 @@
 import pyodbc
 import functools
 from contextlib import closing
-from typing import Callable
 from base_logger import getlogger
-from typing import Optional, Annotated
+from typing import Optional, Annotated, Dict, Any, Callable, List
 from pydantic import BaseModel, Field, conint, constr, confloat
 
 
@@ -63,7 +62,7 @@ def with_db_conn(commit: bool = False):
 
 
 @with_db_conn()
-def get_table_schema(cursor, table_name: str):
+def get_table_schema(cursor, table_name: str) -> List[Dict[str, Any]]:
     """
     [TODO:description]
 

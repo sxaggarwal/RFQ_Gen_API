@@ -13,7 +13,7 @@ from src.helper import (
 import os
 import datetime
 import re
-from mie_trak_api import item, party, request_for_quote
+from mie_trak_api import item, party, request_for_quote, quote
 from base_logger import getlogger
 from pprint import pprint
 
@@ -456,23 +456,26 @@ class RfqGen(tk.Tk):
 
         try:
             address_dict  = party.get_party_address(self.party_pk)
+            if update_rfq_pk:
+                rfq_pk = update_rfq_pk  
+            else:  # for new rfqs
+                rfq_pk = request_for_quote.insert_into_rfq(
+                    party_pk,
+                    address_dict,
+                    customer_rfq_number=customer_rfq_number,
+                    buyer_fk=buyer_fk,
+                    inquiry_date=inq_date,
+                    due_date=due_date_formated,
+                    create_date=current_date_formatted,
+                )  # creating the rfq with selected customer details
+
+            if not rfq_pk:
+                messagebox.showerror(title="RFQ error", message="RFQ might not be generated, database did not return a value for the insertion. Check last RFQ in MT and regenerate.")
+                return None
+
         except RuntimeError as e:
             messagebox.showerror(title="MT Error", message=f"Check Party selection.\nError:\n{e}")
             return None
-
-        if update_rfq_pk:
-            rfq_pk = update_rfq_pk  # If the user wants to update any RFQ then the RFQ PK is set to the RFQ number that user wants to update
-        else:  # for new rfqs
-            rfq_pk = request_for_quote.insert_into_rfq(
-                party_pk,
-                address_dict,
-                customer_rfq_number=customer_rfq_number,
-                buyer_fk=buyer_fk,
-                inquiry_date=inq_date,
-                due_date=due_date_formated,
-                create_date=current_date_formatted,
-            )  # creating the rfq with selected customer details
-
 
         # dictionary with file path as key and the pk of the document group
         path_dict = {}
@@ -587,7 +590,6 @@ class RfqGen(tk.Tk):
                     "ItemTypeFK": 7 if value[13] == "Tooling - Manufactured" else None
                 }
                 item_pk = item.get_or_create_item(**item_dict)
-
                 item_pk_dict[key] = item_pk
 
                 # uploading the documents of the item or part
@@ -612,15 +614,9 @@ class RfqGen(tk.Tk):
                         )
 
                 # creating a quote for the Part and getting QuotePk
-                quote_pk = self.data_base_conn.create_quote(
-                    party_pk, item_pk, 0, key
-                )
-                quote_pk_dict[key] = (
-                    quote_pk  # creating a dictionary with part as key and quote pk as value
-                )
-                self.data_base_conn.add_operation_to_quote(
-                    quote_pk
-                )  # adds the operation template 494 to the quotes
+                quote_pk = quote.create_quote_new(party_pk, item_pk, 0, key)
+                quote_pk_dict[key] = quote_pk
+                quote.copy_operations_to_quote(quote_pk)
 
                 a = [
                     6,
