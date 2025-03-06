@@ -1,6 +1,7 @@
 import os
 from src.general_class import TableManger
 from src.schema import _get_schema
+from typing import Dict, Any
 from base_logger import getlogger
 
 
@@ -130,9 +131,7 @@ class MieTrak:
     def insert_into_rfq(
         self,
         customer_fk,
-        billing_details,
-        state,
-        country,
+        address_dict: Dict[str, Any],
         customer_rfq_number=None,
         buyer_fk=None,
         inquiry_date=None,
@@ -144,8 +143,8 @@ class MieTrak:
         info_dict = {
             "CustomerFK": customer_fk,
             "BuyerFK": buyer_fk,
-            "BillingAddressFK": billing_details[0],
-            "ShippingAddressFK": billing_details[0],
+            "BillingAddressFK": address_dict.get("address_pk"),
+            "ShippingAddressFK": address_dict.get("address_pk"),
             "DivisionFK": 1,
             "ReceivedPurchaseOrder": 0,
             "NoBid": 0,
@@ -153,27 +152,28 @@ class MieTrak:
             "MIEExchange": 0,
             "SalesTaxOnFreight": 0,
             "RequestForQuoteStatusFK": rfq_status_fk,
-            "BillingAddressName": billing_details[1],
-            "BillingAddress1": billing_details[2],
-            "BillingAddress2": billing_details[3],
-            "BillingAddressAlt": billing_details[4],
-            "BillingAddressCity": billing_details[5],
-            "BillingAddressZipCode": billing_details[6],
-            "ShippingAddressName": billing_details[1],
-            "ShippingAddress1": billing_details[2],
-            "ShippingAddress2": billing_details[3],
-            "ShippingAddressAlt": billing_details[4],
-            "ShippingAddressCity": billing_details[5],
-            "ShippingAddressZipCode": billing_details[6],
-            "BillingAddressStateDescription": state[0][0],
-            "BillingAddressCountryDescription": country[0][0],
-            "ShippingAddressStateDescription": state[0][0],
-            "ShippingAddressCountryDescription": country[0][0],
+            "BillingAddressName": address_dict.get("address1"), 
+            "BillingAddress1": address_dict.get("address1"), 
+            "BillingAddress2": address_dict.get("address2"), 
+            "BillingAddressAlt": address_dict.get("address_alt"), 
+            "BillingAddressCity": address_dict.get("city"), 
+            "BillingAddressZipCode": address_dict.get("zip_code"), 
+            "ShippingAddressName": address_dict.get("address1"),
+            "ShippingAddress1": address_dict.get("address1"),
+            "ShippingAddress2": address_dict.get("address2"),
+            "ShippingAddressAlt": address_dict.get("address_alt"),
+            "ShippingAddressCity": address_dict.get("city"),
+            "ShippingAddressZipCode": address_dict.get("zip_code"),
+            "BillingAddressStateDescription": address_dict.get("state"),
+            "BillingAddressCountryDescription": address_dict.get("Country"),
+            "ShippingAddressStateDescription": address_dict.get("state"),
+            "ShippingAddressCountryDescription": address_dict.get("Country"),
             "CustomerRequestForQuoteNumber": customer_rfq_number,
             "InquiryDate": inquiry_date,
             "DueDate": due_date,
             "CreateDate": create_date,
         }
+        LOGGER.debug(info_dict)
         rfq_pk = self.request_for_quote_table.insert(info_dict)
         return rfq_pk
 
@@ -291,7 +291,8 @@ class MieTrak:
     ):
         """Attaches Document to the RFQ or Item based on the PK provided"""
         if not rfq_fk and not item_fk:
-            raise TypeError("Both values can not be None")
+            return None
+
         found = False
         if item_fk:
             paths = self.document_table.get("URL", ItemFK=item_fk)

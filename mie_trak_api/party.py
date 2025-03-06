@@ -1,5 +1,5 @@
 from .utils import with_db_conn
-from typing import Dict, Tuple
+from typing import Dict, Tuple, Any
 
 
 @with_db_conn()
@@ -42,8 +42,7 @@ def get_all_buyers_for_party(cursor, party_pk: int):
 
 
 @with_db_conn()
-def get_party_address(cursor, party_pk: int):
-
+def get_party_address(cursor, party_pk: int) -> Dict[str, Any]:
     query = """
         SELECT 
             a.AddressPK,
@@ -66,9 +65,17 @@ def get_party_address(cursor, party_pk: int):
 
     if not result:
         raise ValueError(f"MT did not return any values for query:\n{query}\nPartyFK: {party_pk}")
-    billing_details = result[:7]  # First 7 columns are billing details
-    state = (result[7],)  # State description as a tuple
-    country = (result[8],)  # Country description as a tuple
 
-    return billing_details, state, country
+    address_details = {
+        "address_pk": result[0],
+        "name": result[1],
+        "address1": result[2],
+        "address2": result[3],
+        "address_alt": result[4],
+        "city": result[5],
+        "zip_code": result[6],
+        "state": result[7],  # No need to store it as a tuple
+        "country": result[8]
+        }
 
+    return address_details
