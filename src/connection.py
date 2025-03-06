@@ -6,7 +6,7 @@ _conn_string_live = "DRIVER={SQL Server};SERVER=ETZ-SQL;DATABASE=ETEZAZIMIETrakL
 
 setup_logging()
 
-def get_connection(live=True):
+def get_connection(live=False):
     """Default connection is sandbox, for live set live=True. Returns the connection object"""
     if live:
         return pyodbc.connect(_conn_string_live)

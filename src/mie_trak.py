@@ -1,6 +1,11 @@
 import os
 from src.general_class import TableManger
 from src.schema import _get_schema
+from base_logger import getlogger
+
+
+
+LOGGER = getlogger("Mie Trak Old")
 
 
 class MieTrak:
@@ -63,12 +68,14 @@ class MieTrak:
         party_pk,
     ):
         """Gets the buyer data for a customer"""
+        # SELECT BuyerFK FROM PartyBuyer WHERE PartyFK = partypk
         data = self.party_buyer_table.get("BuyerFK", PartyFK=party_pk)
         my_dict = {}
         if data:
             buyer_fk = [d[0] for d in data]
             if buyer_fk:
                 for fk in buyer_fk:
+                    # SELECT Name FROM Party WHERE PartyPK = fk
                     buyer_name = self.party_table.get("Name", PartyPK=fk)[0][0]
                     my_dict[buyer_name] = fk
         return my_dict
@@ -235,6 +242,7 @@ class MieTrak:
                     "PurchaseGeneralLedgerAccountFK": purchase_account_fk,
                     "SalesCogsAccountFK": cogs_acc_fk,
                 }
+                LOGGER.debug(item_info_dict)
                 item_pk = self.item_table.insert(item_info_dict)
                 return item_pk
         else:

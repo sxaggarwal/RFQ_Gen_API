@@ -20,13 +20,6 @@ def transfer_file_to_folder(folder_path: str, file_path: str) -> str:
     return destination_path
 
 
-def extract_from_excel(filepath, column_name):
-    """Extracting a column from an excel file"""
-    df = pd.read_excel(filepath)
-    data = df[column_name].tolist()
-    return data
-
-
 def validate_excel_data(part_number, hardware_or_supplies, assy_for, length, thickness, width, weight, qty_reqd, stock_length, stock_width, stock_thickness, rfq_gen = True):
     """Validates the excel data before creating the dictionary."""
     errors = []
@@ -78,6 +71,14 @@ def validate_excel_data(part_number, hardware_or_supplies, assy_for, length, thi
         messagebox.showerror("Validation Errors", "\n".join(errors))
     return errors
 
+
+def extract_from_excel(filepath, column_name):
+    """Extracting a column from an excel file"""
+    df = pd.read_excel(filepath)
+    data = df[column_name].tolist()
+    return data
+
+
 def create_dict_from_excel(filepath, rfq_generate = True):
     """Converts the excel file into a dictionary with part number as key"""
     part_number = extract_from_excel(filepath, "Part")
@@ -107,7 +108,7 @@ def create_dict_from_excel(filepath, rfq_generate = True):
     my_dict = {}
     p = 1
     if errors:
-        return None
+        return None  # FIX: should throw an error. This is terrible.
     else:
         for a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, q, r, s in zip(
             part_number,
