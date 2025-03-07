@@ -16,3 +16,14 @@ Tools and Libraries: Tkinter, Pandas, Openpyxl, MIE Trak API
 ### Future Improvements-
 Automated Excel Filling: Implement a feature to scan and extract data from uploaded drawings and part lists to fill in the Excel sheet automatically.
 Enhanced Data Validation: Add more robust validation checks to ensure data accuracy before transferring to the database.
+
+
+
+# TODO: 
+[ ] change iterator in RFQ gen to be a dict.
+    [ ] change RFQ gen to take in new iterator format
+[ ] GUI improvements
+    [ ] fix reset function
+    [ ] fix file upload system
+    [ ] fix party/buyer selection
+[ ] Create new function for document attach

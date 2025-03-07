@@ -5,7 +5,6 @@ from typing import Dict, Any
 from base_logger import getlogger
 
 
-
 LOGGER = getlogger("Mie Trak Old")
 
 
@@ -152,12 +151,12 @@ class MieTrak:
             "MIEExchange": 0,
             "SalesTaxOnFreight": 0,
             "RequestForQuoteStatusFK": rfq_status_fk,
-            "BillingAddressName": address_dict.get("address1"), 
-            "BillingAddress1": address_dict.get("address1"), 
-            "BillingAddress2": address_dict.get("address2"), 
-            "BillingAddressAlt": address_dict.get("address_alt"), 
-            "BillingAddressCity": address_dict.get("city"), 
-            "BillingAddressZipCode": address_dict.get("zip_code"), 
+            "BillingAddressName": address_dict.get("address1"),
+            "BillingAddress1": address_dict.get("address1"),
+            "BillingAddress2": address_dict.get("address2"),
+            "BillingAddressAlt": address_dict.get("address_alt"),
+            "BillingAddressCity": address_dict.get("city"),
+            "BillingAddressZipCode": address_dict.get("zip_code"),
             "ShippingAddressName": address_dict.get("address1"),
             "ShippingAddress1": address_dict.get("address1"),
             "ShippingAddress2": address_dict.get("address2"),
@@ -510,20 +509,23 @@ class MieTrak:
             self.quote_assembly_table.insert(info_dict1)
         return pk
 
-    def insert_part_details_in_item(self, item_pk, part_number, values, item_type=None):
+    def insert_part_details_in_item(
+        self, item_pk: int, part_number: str, values: dict, item_type=None
+    ):
         """Updates Item with more details"""
         if item_type == "Material":
-            po_comment = (
-                f" Dimensions (L x W x T): {values[7]} x {values[8]} x {values[9]}"
+            LOGGER.debug(
+                f"Dimensions (L x W x T): {values.get('stock_length', '')} x {values.get('stock_width', '')} x {values.get('stock_thickness', '')}"
             )
+            po_comment = f" Dimensions (L x W x T): {values.get('stock_length', '')} x {values.get('stock_width', '')} x {values.get('stock_thickness', '')}"
             self.item_table.update(
                 item_pk,
-                StockLength=values[7],
-                Thickness=values[9],
-                StockWidth=values[8],
-                Weight=values[3],
-                PartLength=values[0],
-                PartWidth=values[2],
+                StockLength=values.get("stock_length", ""),
+                Thickness=values.get("stock_thickness", ""),
+                StockWidth=values.get("stock_width", ""),
+                Weight=values.get("weight", ""),
+                PartLength=values.get("length", ""),
+                PartWidth=values.get("width", ""),
                 PurchaseOrderComment=po_comment,
                 ManufacturedItem=0,
                 Purchase=1,
@@ -533,15 +535,15 @@ class MieTrak:
         else:
             self.item_table.update(
                 item_pk,
-                StockLength=values[7],
-                Thickness=values[1],
-                StockWidth=values[8],
-                Weight=values[3],
-                DrawingNumber=values[4],
-                DrawingRevision=values[5],
-                Revision=values[6],
-                PartLength=values[0],
-                PartWidth=values[2],
+                StockLength=values.get("stock_length", ""),
+                Thickness=values.get("stock_thickness", ""),
+                StockWidth=values.get("stock_width", ""),
+                Weight=values.get("weight", ""),
+                DrawingNumber=values.get("drawing_number", ""),
+                DrawingRevision=values.get("drawing_revision", ""),
+                Revision=values.get("pl_revision", ""),
+                PartLength=values.get("length", ""),
+                PartWidth=values.get("width", ""),
                 VendorPartNumber=part_number,
             )
 

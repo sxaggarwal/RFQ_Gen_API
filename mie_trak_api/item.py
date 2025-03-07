@@ -24,7 +24,7 @@ def get_or_create_item(cursor: pyodbc.Cursor, **item_data):
         raise ValueError("kwargs must contain a part number")
 
     part_number = item_data.get("PartNumber")
-    cursor.execute("SELECT ItemPK FROM Item WHERE PartNumber = ?", (part_number, ))
+    cursor.execute("SELECT ItemPK FROM Item WHERE PartNumber = ?", (part_number,))
     result = cursor.fetchone()
 
     if result:
@@ -57,7 +57,9 @@ def get_or_create_item(cursor: pyodbc.Cursor, **item_data):
         return result[0]
     else:
         LOGGER.critical("SELECT IDENT failed in get_or_create_item")
-        raise ValueError("`SELECT SCOPE` did not return anything. Item might not be inserted.")
+        raise ValueError(
+            "`SELECT SCOPE` did not return anything. Item might not be inserted."
+        )
 
 
 @with_db_conn()
@@ -82,3 +84,15 @@ def get_item(cursor: pyodbc.Cursor, **item_data) -> int | None:
 
     return result[0] if result else None
 
+
+@with_db_conn(commit=True)
+def update_item(cursor, itempk: int, **item_data) -> None:
+    if not item_data:
+        raise ValueError("At least one condition must be provided to get an item.")
+
+    set_string = ", ".join([f"{key} = '{value}'" for key, value in item_data.items()])
+    query = f"UPDATE Item SET {set_string} WHERE ItemPK = {itempk};"
+
+    LOGGER.debug(query)
+    cursor.execute(query)
+    LOGGER.info(f"Updated ItemPK: {itempk}.")

@@ -13,10 +13,11 @@ from src.helper import (
 import os
 import datetime
 import re
+from typing import Dict, Any
 from mie_trak_api import bom, item, party, request_for_quote, quote, router
 from base_logger import getlogger
+from src.excel_parser import create_dict_from_excel_new, generate_item_pks
 from pprint import pprint
-
 
 
 LOGGER = getlogger("Main")
@@ -209,7 +210,7 @@ class RfqGen(tk.Tk):
         )
         browse_button_part_list.grid(row=11, column=2)
 
-        tk.Label(self, text='Estimating Documents:').grid(row=9, column=0)
+        tk.Label(self, text="Estimating Documents:").grid(row=9, column=0)
         self.file_path_estimating_entry = tk.Listbox(self, height=2, width=50)
         self.file_path_estimating_entry.grid(row=10, column=0)
 
@@ -221,8 +222,6 @@ class RfqGen(tk.Tk):
             ),
         )
         browse_button_estimating.grid(row=11, column=0)
-
-
 
         # Checkbox for ITAR RESTRICTED
         self.itar_restricted_var = tk.BooleanVar()
@@ -329,18 +328,18 @@ class RfqGen(tk.Tk):
         self.buyer_select_box.set("")
 
         current_index = self.customer_select_box.current()
-        customer_data_dict = self.filtered_dict if self.filtered_dict else self.customer_data
+        customer_data_dict = (
+            self.filtered_dict if self.filtered_dict else self.customer_data
+        )
 
         user_selected_party_pk = list(customer_data_dict.keys())[current_index]
 
         short_name, email = party.get_party_shortname_email(user_selected_party_pk)
 
-        self.customer_info_text.insert(
-            tk.END, f"Name: {short_name}\nEmail: {email}"
-        )
+        self.customer_info_text.insert(tk.END, f"Name: {short_name}\nEmail: {email}")
         self.party_pk = user_selected_party_pk
 
-        self.update_buyer_combobox() 
+        self.update_buyer_combobox()
 
     def update_buyer_info(self, event=None):
         """Update customer information label when a Buyer is selected"""
@@ -369,8 +368,10 @@ class RfqGen(tk.Tk):
             # entering all file paths in the listbox
             list_box.delete(0, tk.END)
             for path in self.filepaths:
-                if 'PDM' in path or 'Estimating' in path:
-                    messagebox.showerror("Error", "Dude! Files from PDM and Estimating can't be uploaded")
+                if "PDM" in path or "Estimating" in path:
+                    messagebox.showerror(
+                        "Error", "Dude! Files from PDM and Estimating can't be uploaded"
+                    )
                     list_box.delete(0, tk.END)
                     return
                 else:
@@ -387,11 +388,12 @@ class RfqGen(tk.Tk):
         """Updates the buyer combobox when a customer is selected"""
         try:
             self.buyer_dict = party.get_all_buyers_for_party(self.party_pk)
-            self.buyer_select_box["values"] = list(self.buyer_dict.values())  # values are sorted from the database
+            self.buyer_select_box["values"] = list(
+                self.buyer_dict.values()
+            )  # values are sorted from the database
         except RuntimeError as e:
             messagebox.showerror(title="Error in database", message=f"{e}")
             self.buyer_dict = None
-
 
     def reset_gui(self):
         self.customer_select_box.set("")
@@ -409,8 +411,10 @@ class RfqGen(tk.Tk):
     def generate_rfq(self, loading_screen, update_rfq_pk=None):
         """Main function for generating RFQ, adding line items and creating a quote"""
 
-        #TODO: self.cusotmer_select_box.get() should be partypk instead.
-        if not self.customer_select_box.get() or not self.file_path_PR_entry.get(0):  # checking if user uploaded the part request excel file and selected the customer or not
+        # TODO: self.cusotmer_select_box.get() should be partypk instead.
+        if (
+            not self.customer_select_box.get() or not self.file_path_PR_entry.get(0)
+        ):  # checking if user uploaded the part request excel file and selected the customer or not
             self.loading_screen.destroy()
             messagebox.showerror(
                 "ERROR", "Select Customer/ Upload Parts Requested File"
@@ -418,25 +422,30 @@ class RfqGen(tk.Tk):
             self.reset_gui()
             return
 
-        info_dict = create_dict_from_excel(
+        # info_dict = create_dict_from_excel(
+        #     self.file_path_PR_entry.get(0, tk.END)[0]
+        # )  # returns a dict with the dimensional and other details as values and part number as key
+
+        LOGGER.debug("Extracting excel...")
+        info_dict: Dict[str, Dict[str, Any]] = create_dict_from_excel_new(
             self.file_path_PR_entry.get(0, tk.END)[0]
-        )  # returns a dict with the dimensional and other details as values and part number as key
+        )
+        LOGGER.debug("Excel file values:")
+        pprint(info_dict)
 
         if not info_dict:
             self.loading_screen.destroy()
-            messagebox.showerror(
-                "ERROR", "Edit Excel File and try Again"
-            )
+            messagebox.showerror("ERROR", "Edit Excel File and try Again")
             self.reset_gui()
-            return 
+            return
 
-        customer_rfq_number = (
-            self.rfq_number_text.get()
-        )  # user input
+        customer_rfq_number = self.rfq_number_text.get()  # user input
 
         # Getting current date, inquiry date and due date
         current_date = datetime.date.today()
-        current_date_formatted = f"{current_date.strftime("%m-%d-%Y")} 12:00:00 AM" if current_date else None
+        current_date_formatted = (
+            f"{current_date.strftime('%m-%d-%Y')} 12:00:00 AM" if current_date else None
+        )
 
         inquiry_date = self.inquiry_date_box.get()
         inq_date = f"{inquiry_date} 12:00:00 AM" if inquiry_date else None
@@ -446,13 +455,17 @@ class RfqGen(tk.Tk):
 
         # we are doing this twice, once when the user makes a selection and second time when presses generate
         buyer_selection_idx = self.buyer_select_box.current()
-        buyer_fk = list(self.buyer_dict.keys())[buyer_selection_idx] if buyer_selection_idx and self.buyer_dict else None
+        buyer_fk = (
+            list(self.buyer_dict.keys())[buyer_selection_idx]
+            if buyer_selection_idx and self.buyer_dict
+            else None
+        )
 
         party_pk = self.party_pk  # getting the pk of the selected customer
 
-        address_dict  = party.get_party_address(self.party_pk)
+        address_dict = party.get_party_address(self.party_pk)
         if update_rfq_pk:
-            rfq_pk = update_rfq_pk  
+            rfq_pk = update_rfq_pk
         else:  # for new rfqs
             rfq_pk = request_for_quote.insert_into_rfq(
                 party_pk,
@@ -465,48 +478,71 @@ class RfqGen(tk.Tk):
             )  # creating the rfq with selected customer details
 
         if not rfq_pk:
-            messagebox.showerror(title="RFQ error", message="RFQ might not be generated, database did not return a value for the insertion. Check last RFQ in MT and regenerate.")
+            messagebox.showerror(
+                title="RFQ error",
+                message="RFQ might not be generated, database did not return a value for the insertion. Check last RFQ in MT and regenerate.",
+            )
             return None
+
+        LOGGER.debug(f"Created RFQ with pk: {rfq_pk}.")
 
         # dictionary with file path as key and the pk of the document group
         path_dict = {}
         estimation_path_dict = {}
-        user_selected_file_paths = list(self.file_path_PL_entry.get(0, tk.END))  
+        user_selected_file_paths = list(self.file_path_PL_entry.get(0, tk.END))
 
-        #TODO: file path pr entry to estimation folder docs
-        estimation_folder_docs = list(self.file_path_PR_entry.get(0, tk.END) + self.file_path_estimating_entry.get(0, tk.END))
+        # TODO: file path pr entry to estimation folder docs
+        estimation_folder_docs = list(
+            self.file_path_PR_entry.get(0, tk.END)
+            + self.file_path_estimating_entry.get(0, tk.END)
+        )
         order_by_counter = 1
         count = 1
-    
-        part_mat_ht_op_dict = pk_info_dict(
-            info_dict
-        )  # returns a dict with part_number as key and mat_pk, ht_pk, fin_pk as values
+
+        # part_mat_ht_op_dict = pk_info_dict(
+        #     info_dict
+        # )  # returns a dict with part_number as key and mat_pk, ht_pk, fin_pk as values
+
+        LOGGER.debug("Generating items for Mat, HT and OP for...")
+        part_mat_ht_op_dict = generate_item_pks(info_dict)
+        pprint(part_mat_ht_op_dict)
+
         item_pk_dict = {}  # {"PartNumber": ItemPK}
         restricted = False
         quote_pk_dict = {}
         loading_screen.set_progress(10)
         ct = 20
+        LOGGER.debug("Starting loop to insert items...")
         for new_key, value in info_dict.items():
-            key = new_key.split("_____")[0] if self.ends_with_suffix(new_key) else new_key
+            key = (
+                new_key.split("_____")[0] if self.ends_with_suffix(new_key) else new_key
+            )
+            LOGGER.debug(f"Current key: {key}")
 
-            if value[13] is None or value[13] == "Tooling - Manufactured":  # if main part of tooling.
-                if (
-                    self.itar_restricted_var.get()
-                ):  # checking if the user clicked on Restricted box or not and based on that destination path is decided
+            hardware_or_supplies = value.get("hardware_or_supplies", None)
+            LOGGER.debug(hardware_or_supplies)
+            if (
+                not hardware_or_supplies
+                or hardware_or_supplies == "Tooling - Manufactured"
+            ):  # if main part of tooling.
+                LOGGER.debug("Hardware/supplies is not None or tooling.")
+                if self.itar_restricted_var.get():  # checking if the user clicked on Restricted box or not and based on that destination path is decided
                     # pass
                     destination_path = (
                         rf"y:\PDM\Restricted\{self.customer_select_box.get()}\{key}"
                     )
-                    estimation_destinatoin_path = (rf"y:\Estimating\Restricted\{self.customer_select_box.get()}\{self.rfq_number_text.get()}")
+                    estimation_destinatoin_path = rf"y:\Estimating\Restricted\{self.customer_select_box.get()}\{self.rfq_number_text.get()}"
                     restricted = True
                 else:
-                    destination_path = rf"y:\PDM\Non-restricted\{self.customer_select_box.get()}\{key}"
-                    estimation_destinatoin_path = (rf"y:\Estimating\Non-restricted\{self.customer_select_box.get()}\{self.rfq_number_text.get()}")
+                    destination_path = (
+                        rf"y:\PDM\Non-restricted\{self.customer_select_box.get()}\{key}"
+                    )
+                    estimation_destinatoin_path = rf"y:\Estimating\Non-restricted\{self.customer_select_box.get()}\{self.rfq_number_text.get()}"
 
                 for file in user_selected_file_paths:
                     # folder is get or created and file is copied to this folder
 
-                    #TODO: here instead of user_selected_file_path it should be estimating
+                    # TODO: here instead of user_selected_file_path it should be estimating
                     file_path_to_add_to_rfq = transfer_file_to_folder(
                         destination_path, file
                     )
@@ -530,8 +566,10 @@ class RfqGen(tk.Tk):
                         path_dict[file_path_to_add_to_rfq] = None
 
                 for file_p in estimation_folder_docs:
-                    #TODO: Create different dict for estimation folder docs.
-                    file_path_to_add_to_rfq = transfer_file_to_folder(estimation_destinatoin_path, file_p)
+                    # TODO: Create different dict for estimation folder docs.
+                    file_path_to_add_to_rfq = transfer_file_to_folder(
+                        estimation_destinatoin_path, file_p
+                    )
                     path = file_path_to_add_to_rfq.lower()
                     if (
                         "_pl_" in path
@@ -553,7 +591,7 @@ class RfqGen(tk.Tk):
 
                 # Uploading documents to the RFQ with a counter so that the same document is not uploaded more than once
                 for file, pk in estimation_path_dict.items():
-                    #TODO; Use the estiamtion folder dict to upload here
+                    # TODO; Use the estiamtion folder dict to upload here
                     if count == 1:
                         if restricted:
                             self.data_base_conn.upload_documents(
@@ -574,11 +612,13 @@ class RfqGen(tk.Tk):
                 # searching for the part on MIE Trak and returns the PK, if the part doesn't exist then it creates an item and returns the pk
                 item_dict = {
                     "PartNumber": key,
-                    "Description":value[0],
+                    "Description": value.get("description", ""),
                     "Purchase": 0,
                     "ServiceItem": 0,
                     "ManufacturedItem": 1,
-                    "ItemTypeFK": 7 if value[13] == "Tooling - Manufactured" else None
+                    "ItemTypeFK": 7
+                    if hardware_or_supplies == "Tooling - Manufactured"
+                    else None,
                 }
                 item_pk = item.get_or_create_item(**item_dict)
                 item_pk_dict[key] = item_pk
@@ -607,20 +647,30 @@ class RfqGen(tk.Tk):
                 # creating a quote for the Part and getting QuotePk
                 quote_pk = quote.create_quote_new(party_pk, item_pk, 0, key)
                 quote_pk_dict[key] = quote_pk
+                LOGGER.debug("quote_pk_dict updated with new quote number")
                 quote.copy_operations_to_quote(quote_pk)
 
+                pprint(quote_pk_dict)
+
                 # Sequence number in Operations for IssueMat, HT, FIN resp
-                seq_nums = [6, 21, 22]  
+                seq_nums = [6, 21, 22]
 
                 # list of Quote Assembly pk in order MAT, HT, FIN
-                quote_assembly_fks = [quote.get_quote_assembly_pk(**{"QuoteFK":quote_pk, "SequenceNumber":x}) for x in seq_nums]
+                quote_assembly_fks = [
+                    quote.get_quote_assembly_pk(
+                        **{"QuoteFK": quote_pk, "SequenceNumber": x}
+                    )
+                    for x in seq_nums
+                ]
 
                 # creating a Bill of Material for a quote
                 mat_ht_fin_pks: tuple = part_mat_ht_op_dict[key]
 
-                for pk, quote_ass_fk, num in zip(  
+                LOGGER.debug("Attaching BOM to Item...")
+                for pk, quote_ass_fk, num in zip(
                     mat_ht_fin_pks, quote_assembly_fks, seq_nums
                 ):
+                    LOGGER.debug(f"{pk}, {quote_ass_fk}, {num}")
                     if pk is not None:
                         bom.create_bom_quote(
                             quote_pk,
@@ -628,70 +678,60 @@ class RfqGen(tk.Tk):
                             quote_ass_fk,
                             num,
                             order_by_counter,
-                            PartLength=value[1],
-                            PartWidth=value[3],
-                            Thickness=value[2],
+                            PartLength=value.get("length", ""),
+                            PartWidth=value.get("width", ""),
+                            Thickness=value.get("thickness", ""),
                         )
                         order_by_counter += 1
 
                 if mat_ht_fin_pks[2]:  # if OP finish is not none
-                    LOGGER.debug("Executing...")
                     op_finish_pk = mat_ht_fin_pks[2]
                     op_part_number = f"{key} - OP Finish"
-                    finish_description = value[6]
+                    finish_description = value.get("finish_code", "")
                     self.create_finish_router(
                         finish_description, op_finish_pk, op_part_number
                     )
 
                 # Inserting dimensional and other values to the item table for a part and attaching Document to OP, HT, FIN
                 # if key in info_dict:
-                dict_values1 = [
-                    value[1],
-                    value[2],
-                    value[3],
-                    value[4],
-                    value[8],
-                    value[9],
-                    value[11],
-                    value[14],
-                    value[15],
-                    value[16],
-                ]
-                self.data_base_conn.insert_part_details_in_item(
-                    item_pk, key, dict_values1
-                )
+                self.data_base_conn.insert_part_details_in_item(item_pk, key, value)
                 pk_value = part_mat_ht_op_dict[key]
                 for pk in pk_value[1:]:
                     if pk:
-                        self.data_base_conn.insert_part_details_in_item(
-                            pk, key, dict_values1
-                        )
+                        self.data_base_conn.insert_part_details_in_item(pk, key, value)
                 if pk_value[0]:
                     self.data_base_conn.insert_part_details_in_item(
-                        pk_value[0], key, dict_values1, item_type="Material"
+                        pk_value[0], key, value, item_type="Material"
                     )
 
             else:
                 # if hardware or tooling then adding it to the BOM of its Assembly part accordingly
-                part_num = value[12]
+                part_num = value.get("assy_for", "")
+
+                # TODO: throw error if parent now found??
+
                 fk = quote_pk_dict.get(part_num)
-                if value[13] == "Hardware":
-                    quote_assembly_pk = quote.get_quote_assembly_pk({
-                        "QuoteFK":fk, "SequenceNumber":24
-                    })
-                    # item_fk = self.data_base_conn.get_or_create_item(key, item_type_fk=3, description=value[0], calculation_type_fk=12, purchase_account_fk=130, cogs_acc_fk=130, mps_item=0, forecast_on_mrp=0,mps_on_mrp=0,service_item=0,ship_loose=0,bulk_ship=0)
-                    item_fk = check_and_create_tooling(value[0])
-                    self.data_base_conn.create_bom_quote(
-                        fk, item_fk, quote_assembly_pk, 24, order_by_counter,quantity_reqd=value[10] if value[10] else 1.00,
+                if value.get("hardware_or_supplies", "") == "Hardware":
+                    quote_assembly_pk = quote.get_quote_assembly_pk(
+                        {"QuoteFK": fk, "SequenceNumber": 24}
+                    )
+                    item_fk = check_and_create_tooling(value.get("description", ""))
+                    bom.create_bom_quote(
+                        fk,
+                        item_fk,
+                        quote_assembly_pk,
+                        24,
+                        order_by_counter,
+                        quantity_reqd=value.get("quantity_required", 1.00),
                     )
                     order_by_counter += 1
-                elif value[13] == "Tooling":
+                elif value.get("hardware_or_supplies", "") == "Tooling":
                     quote_assembly_pk = self.quote_assembly_table.get(
                         "QuoteAssemblyPK", QuoteFK=fk, SequenceNumber=8
                     )
                     item_fk = self.data_base_conn.get_or_create_item(
                         key,
-                        description=value[0],
+                        description=value.get("description"),
                         item_type_fk=7,
                         mps_item=0,
                         purchase=0,
@@ -705,13 +745,19 @@ class RfqGen(tk.Tk):
                         manufactured_item=1,
                     )
                     self.data_base_conn.create_bom_quote(
-                        fk, item_fk, quote_assembly_pk, 8, order_by_counter, quantity_reqd=value[10] if value[10] else 1.00,
+                        fk,
+                        item_fk,
+                        quote_assembly_pk,
+                        8,
+                        order_by_counter,
+                        quantity_reqd=value.get("quantity_required", 1.00),
                     )
                     order_by_counter += 1
             loading_screen.set_progress(ct)
             if ct < 90:
                 ct += 10
 
+        # TODO: throw error if no RFQ PK?
         self.create_rfq(
             quote_pk_dict, item_pk_dict, rfq_pk, info_dict
         )  # checking if the Assy or Detail and creating the line item and adding quotes of assembly to the BOM of Assy Line Quotes
@@ -726,8 +772,8 @@ class RfqGen(tk.Tk):
         )
 
         self.reset_gui()
-    # -------------------------------------------------------------------------------------------------------------
 
+    # -------------------------------------------------------------------------------------------------------------
 
     # Update: May10
     def create_finish_router(self, finish_description, item_fin_pk, part_num):
@@ -737,19 +783,23 @@ class RfqGen(tk.Tk):
 
         if finish_code:
             for code in finish_code:
-                finish_codes_pk = item.get_or_create_item(**{
-                    "PartNumber":code[:100],
-                    "Description":code[:490], #TODO: Fix this as its crossing the limit, add this to the comments.
-                    "Inventoriable":0,
-                    "ItemTypeFK":5,
-                    "CertReqdBySupplier":1,
-                    "CanNotCreateWorkOrder":1,
-                    "CanNotInvoice":1,
-                    "PurchaseAccountFK":125,
-                    "CogsAccFk":125,
-                    "CalculationTypeFK":17,
-                    "Comment":code
-                })
+                finish_codes_pk = item.get_or_create_item(
+                    **{
+                        "PartNumber": code[:100],
+                        "Description": code[
+                            :490
+                        ],  # TODO: Fix this as its crossing the limit, add this to the comments.
+                        "Inventoriable": 0,
+                        "ItemTypeFK": 5,
+                        "CertReqdBySupplier": 1,
+                        "CanNotCreateWorkOrder": 1,
+                        "CanNotInvoice": 1,
+                        "PurchaseAccountFK": 125,
+                        "CogsAccFk": 125,
+                        "CalculationTypeFK": 17,
+                        "Comment": code,
+                    }
+                )
                 finish_pks.append(finish_codes_pk)
 
         router_pk = router.create_router(item_fin_pk, part_num)
@@ -759,8 +809,9 @@ class RfqGen(tk.Tk):
             router.create_router_work_center(pk, router_pk, idx)
 
     def ends_with_suffix(self, s):
-        return re.search(r'_____\d+$', s) is not None
+        return re.search(r"_____\d+$", s) is not None
 
+    # unused
     def process_rfq(
         self,
         quote_pk_dict,
@@ -806,7 +857,6 @@ class RfqGen(tk.Tk):
                     and key not in assy_key_list
                     and parent_key is not None
                 ):
-
                     parent_key_quote_pk = quote_pk_dict.get(parent_key)
                     if j == 0:
                         parent_quote_assembly_pk = (
@@ -852,65 +902,74 @@ class RfqGen(tk.Tk):
         quote_pk_dict,
         item_pk_dict,
         rfq_pk,
-        info_dict,
+        info_dict: Dict[str, Dict[str, Any]],
         parent_key=None,
         parent_quote_fk=None,
         i=1,
     ):
         """checks if its Assy or Detail and accordingly creates the line item and adds quotes of assembly to the BOM of Assy Line Quotes"""
+        main_part_number = None
+        main_quote_pk = None
+
         parent_quote_assembly_pk_dict = {}
         for new_key, value in info_dict.items():
             if self.ends_with_suffix(new_key) is None:
                 key = new_key
             else:
                 key = new_key.split("_____")[0]
+
             part_number = key
-            # assy_for = value[12]
+            assy_for = value.get("assy_for", None)
             quote_pk = quote_pk_dict.get(part_number)
             item_pk = item_pk_dict.get(part_number)
-            if value[12] is None:
+
+            if not assy_for:
                 rfq_line_pk = self.data_base_conn.create_rfq_line_item(
-                    item_pk, rfq_pk, i, quote_pk, quantity=value[10]
+                    item_pk,
+                    rfq_pk,
+                    i,
+                    quote_pk,
+                    quantity=value.get("quantity_required", 1.00),
                 )
                 i += 1
-                self.data_base_conn.rfq_line_qty(rfq_line_pk, value[10])
+                self.data_base_conn.rfq_line_qty(
+                    rfq_line_pk, value.get("quantity_required", 1)
+                )
                 main_quote_pk = quote_pk
                 main_part_number = part_number
 
-            elif value[12] is not None and value[13] is None:
-                if value[12] == main_part_number:
-                    print("running elif.......")
-                    print(f"{key}")
+            elif assy_for and value.get("hardware_or_supplies", None) is None:
+                if not main_part_number or not main_quote_pk:
+                    raise ValueError("Data from excel sheet is not proper bruh.")
+
+                if assy_for == main_part_number:
                     quote_fk = main_quote_pk
                     parent_quote_assembly_pk = self.data_base_conn.create_assy_quote(
-                        quote_pk, quote_fk, value[10]
+                        quote_pk, quote_fk, value.get("quantity_required", "")
                     )
                     parent_quote_assembly_pk_dict[part_number] = (
                         parent_quote_assembly_pk
                     )
 
                 else:
-                    parent_key = value[12]
-                    parent_quote_fk = quote_pk_dict[parent_key]
-                    if parent_key not in parent_quote_assembly_pk_dict:
+                    parent_quote_fk = quote_pk_dict[assy_for]
+                    if assy_for not in parent_quote_assembly_pk_dict:
                         raise KeyError(
-                            f"Key '{parent_key}' not found in parent_quote_assembly_pk_dict"
+                            f"Key '{assy_for}' not found in parent_quote_assembly_pk_dict"
                         )
                     parent_quote_assembly_pk_new = parent_quote_assembly_pk_dict[
-                        parent_key
+                        assy_for
                     ]
                     parent_quote_assembly_pk = self.data_base_conn.create_assy_quote(
                         quote_pk,
                         main_quote_pk,
-                        value[10],
+                        value.get("quantity_required", 1),
                         parent_quote_fk=parent_quote_fk,
                         parent_quote_asembly=parent_quote_assembly_pk_new,
                     )
                     parent_quote_assembly_pk_dict[part_number] = (
                         parent_quote_assembly_pk
                     )
-
-            print("-" * 50)
 
     def add_item(self):
         """Adds/Update Items"""
@@ -935,9 +994,7 @@ class RfqGen(tk.Tk):
                 else:
                     key = new_key.split("_____")[0]
                 if self.customer_select_box.get():
-                    if (
-                        self.itar_restricted_var.get()
-                    ):  # checking if the user clicked on Restricted box or not and based on that destination path is decided
+                    if self.itar_restricted_var.get():  # checking if the user clicked on Restricted box or not and based on that destination path is decided
                         destination_path = (
                             rf"y:\PDM\Restricted\{self.customer_select_box.get()}\{key}"
                         )
@@ -1085,7 +1142,9 @@ class RfqGen(tk.Tk):
             self.data_base_conn.delete_rfq_line_pk(rfq_pk)
             loading_screen = LoadingScreen(self, max_progress=100)
             Thread(
-            target=self.generate_rfq, args=(loading_screen,), kwargs={'update_rfq_pk': rfq_pk}
+                target=self.generate_rfq,
+                args=(loading_screen,),
+                kwargs={"update_rfq_pk": rfq_pk},
             ).start()
             # self.generate_rfq(loading_screen, update_rfq_pk=rfq_pk)
         else:

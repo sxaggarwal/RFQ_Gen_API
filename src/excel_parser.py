@@ -39,10 +39,23 @@ def sanitize_value(value, default=None):
     return value
 
 
-def create_dict_from_excel_new(filepath: str):
-    """Converts the Excel file into a dictionary with part number as key."""
+def create_dict_from_excel_new(filepath: str) -> Dict[str, Dict[str, Any]]:
+    """
+    Reads an Excel file and converts it into a dictionary where each part number is a key,
+    and its corresponding data is stored as a dictionary.
 
-    df = pd.read_excel(filepath, dtype=str).fillna("")  
+    The function ensures that required columns exist, renames them for consistency,
+    applies data sanitization, converts numeric fields, and validates each row using
+    the `PartData` Pydantic model. If a part number is missing, a fallback name is generated.
+    If a duplicate part number is found, a unique suffix is appended.
+
+    :param filepath: Path to the Excel file to be processed.
+    :return: A dictionary where keys are part numbers and values are dictionaries of part attributes.
+    :raises ValueError: If required columns are missing in the Excel file.
+    :raises ValueError: If data validation fails for one or more rows.
+    """
+
+    df = pd.read_excel(filepath, dtype=str).fillna("")
 
     required_columns = {
         "Part": "part_number",
@@ -62,7 +75,7 @@ def create_dict_from_excel_new(filepath: str):
         "Hardware/Tooling": "hardware_or_supplies",
         "StockLength": "stock_length",
         "StockWidth": "stock_width",
-        "StockThickness": "stock_thickness"
+        "StockThickness": "stock_thickness",
     }
 
     missing_columns = [col for col in required_columns if col not in df.columns]
@@ -73,10 +86,25 @@ def create_dict_from_excel_new(filepath: str):
 
     df = df.map(sanitize_value)
 
-    numeric_fields = ["length", "thickness", "width", "weight", "stock_length", "stock_width", "stock_thickness"]
-    df[numeric_fields] = df[numeric_fields].apply(pd.to_numeric, errors="coerce").fillna(0.0)
+    numeric_fields = [
+        "length",
+        "thickness",
+        "width",
+        "weight",
+        "stock_length",
+        "stock_width",
+        "stock_thickness",
+    ]
+    df[numeric_fields] = (
+        df[numeric_fields].apply(pd.to_numeric, errors="coerce").fillna(0.0)
+    )
 
-    df["quantity_required"] = df["quantity_required"].apply(pd.to_numeric, errors="coerce").fillna(0).astype(int)
+    df["quantity_required"] = (
+        df["quantity_required"]
+        .apply(pd.to_numeric, errors="coerce")
+        .fillna(0)
+        .astype(int)
+    )
 
     my_dict = {}
 
@@ -108,8 +136,8 @@ def generate_item_pks(info_dict: Dict[str, Dict[str, Any]]) -> Dict[str, tuple]:
     """
     Generates a dictionary mapping part numbers to their corresponding material, heat treatment, and finish primary keys.
 
-    This function processes an input dictionary containing item details, checks if corresponding 
-    records exist in the database, and retrieves or creates primary keys (PKs) for materials, finishes, 
+    This function processes an input dictionary containing item details, checks if corresponding
+    records exist in the database, and retrieves or creates primary keys (PKs) for materials, finishes,
     and heat treatments. It ensures unique part number keys in the returned dictionary.
 
     :param info_dict: A dictionary where each key is a part number and the value is a dictionary containing:
@@ -127,7 +155,11 @@ def generate_item_pks(info_dict: Dict[str, Dict[str, Any]]) -> Dict[str, tuple]:
     my_dict = {}
     for new_key, value_dict in info_dict.items():
         # Remove suffix if present
-        key = new_key.split("_____")[0] if bool(re.search(r'____\d+$', new_key)) else new_key
+        key = (
+            new_key.split("_____")[0]
+            if bool(re.search(r"____\d+$", new_key))
+            else new_key
+        )
 
         # Initialize primary keys
         mat_pk = None
@@ -136,68 +168,84 @@ def generate_item_pks(info_dict: Dict[str, Dict[str, Any]]) -> Dict[str, tuple]:
 
         # Fetch or create material PK
         if value_dict.get("material"):
-            mat_pk = item.get_item(**{
-                "PartNumber": value_dict.get("part_number"),
-                "StockLength": value_dict.get("stock_length"),
-                "StockWidth": value_dict.get("stock_width"),
-                "Thickness": value_dict.get("thickness"),
-            })
-            if not mat_pk:
-                mat_pk = item.get_or_create_item(**{
+            mat_pk = item.get_item(
+                **{
                     "PartNumber": value_dict.get("part_number"),
-                    "ServiceItem": 0,
-                    "Purchase": 1,
-                    "Manufactureditem": 0,
-                    "ItemTypeFK": 2,
-                    "OnlyCreate": 1,
-                    "BulkShip": 0,
-                    "ShipLoose": 0,
-                    "CertReqdBySupplier": 1,
-                    "PurchaseAccountFK": 127,
-                    "CogsAccFK": 127,
-                    "CalculationTypeFK": 4,
-                })
+                    "StockLength": value_dict.get("stock_length"),
+                    "StockWidth": value_dict.get("stock_width"),
+                    "Thickness": value_dict.get("thickness"),
+                }
+            )
+            if not mat_pk:
+                mat_pk = item.get_or_create_item(
+                    **{
+                        "PartNumber": value_dict.get("part_number"),
+                        "ServiceItem": 0,
+                        "Purchase": 1,
+                        "Manufactureditem": 0,
+                        "ItemTypeFK": 2,
+                        "OnlyCreate": 1,
+                        "BulkShip": 0,
+                        "ShipLoose": 0,
+                        "CertReqdBySupplier": 1,
+                        "PurchaseAccountFK": 127,
+                        "CogsAccFK": 127,
+                        "CalculationTypeFK": 4,
+                    }
+                )
 
         # Fetch or create finish PK
         if value_dict.get("finish_code"):
             material = value_dict.get("material")
-            comment = f"Material: {material} \n{value_dict['finish_code']}" if material else value_dict["finish_code"]
+            comment = (
+                f"Material: {material} \n{value_dict['finish_code']}"
+                if material
+                else value_dict["finish_code"]
+            )
 
-            fin_pk = item.get_or_create_item(**{
-                "PartNumber": f"{key} - OP Finish",
-                "ItemTypeFK": 5,
-                "Comment": comment,
-                "PurchaseOrderComment": comment,
-                "Inventoriable": 0,
-                "OnlyCreate": 1,
-                "CertReqdBySupplier": 1,
-                "CanNotCreateWorkOrder": 1,
-                "CanNotInvoice": 1,
-                "PurchaseAccountFK": 125,
-                "CogsAccFK": 125,
-                "CalculationTypeFK": 17,
-            })
+            fin_pk = item.get_or_create_item(
+                **{
+                    "PartNumber": f"{key} - OP Finish",
+                    "ItemTypeFK": 5,
+                    "Comment": comment,
+                    "PurchaseOrderComment": comment,
+                    "Inventoriable": 0,
+                    "OnlyCreate": 1,
+                    "CertReqdBySupplier": 1,
+                    "CanNotCreateWorkOrder": 1,
+                    "CanNotInvoice": 1,
+                    "PurchaseAccountFK": 125,
+                    "CogsAccFK": 125,
+                    "CalculationTypeFK": 17,
+                }
+            )
 
         # Fetch or create heat treat PK
         if value_dict.get("heat_treat"):
             material = value_dict.get("material")
-            comment = f"Material: {material} \n{value_dict['heat_treat']}" if material else value_dict["heat_treat"]
+            comment = (
+                f"Material: {material} \n{value_dict['heat_treat']}"
+                if material
+                else value_dict["heat_treat"]
+            )
 
-            ht_pk = item.get_or_create_item(**{
-                "PartNumber": f"{key} - OP HT",
-                "ItemTypeFK": 5,
-                "Description": value_dict.get("heat_treat"),
-                "Comment": comment,
-                "PurchaseOrderComment": comment, 
-                "Inventoriable": 0,
-                "OnlyCreate": 1,
-                "CertReqdBySupplier": 1,
-                "CanNotCreateWorkOrder": 1,
-                "CanNotInvoice": 1,
-                "PurchaseAccountFK": 125,
-                "CogsAccFK": 125,
-                "CalculationTypeFK": 17,
-            })
+            ht_pk = item.get_or_create_item(
+                **{
+                    "PartNumber": f"{key} - OP HT",
+                    "ItemTypeFK": 5,
+                    "Description": value_dict.get("heat_treat"),
+                    "Comment": comment,
+                    "PurchaseOrderComment": comment,
+                    "Inventoriable": 0,
+                    "OnlyCreate": 1,
+                    "CertReqdBySupplier": 1,
+                    "CanNotCreateWorkOrder": 1,
+                    "CanNotInvoice": 1,
+                    "PurchaseAccountFK": 125,
+                    "CogsAccFK": 125,
+                    "CalculationTypeFK": 17,
+                }
+            )
 
         # Ensure unique key in dictionary
         original_key = key
