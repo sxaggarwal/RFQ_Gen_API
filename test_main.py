@@ -15,5 +15,6 @@ if __name__ == "__main__":
 
     # pprint(pk_info_dict(info_dict))
 
-    print(item.get_item(**{"PartNumber": "B02-20697-10 - OP Finish"}))
+    # print(item.get_item(**{"PartNumber": "B02-20697-10 - OP Finish"}))
+    print(type(quote.get_quote_assembly_pk(**{"QuoteFK": 2539, "SequenceNumber": 21})))
 

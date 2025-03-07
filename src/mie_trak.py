@@ -173,7 +173,6 @@ class MieTrak:
             "DueDate": due_date,
             "CreateDate": create_date,
         }
-        LOGGER.debug(info_dict)
         rfq_pk = self.request_for_quote_table.insert(info_dict)
         return rfq_pk
 
@@ -242,7 +241,6 @@ class MieTrak:
                     "PurchaseGeneralLedgerAccountFK": purchase_account_fk,
                     "SalesCogsAccountFK": cogs_acc_fk,
                 }
-                LOGGER.debug(item_info_dict)
                 item_pk = self.item_table.insert(item_info_dict)
                 return item_pk
         else:

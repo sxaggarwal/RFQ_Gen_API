@@ -34,7 +34,13 @@ def create_quote_new(cursor: pyodbc.Cursor, customer_fk: int, item_fk: int, quot
 
 @with_db_conn(commit=True)
 def copy_operations_to_quote(cursor: pyodbc.Cursor, new_quote_fk, source_quote_fk=494):
-    """Copies operation templates from one quote to another in a single SQL query"""
+    """
+    [TODO:description]
+
+    :param cursor: [TODO:description]
+    :param new_quote_fk [TODO:type]: [TODO:description]
+    :param source_quote_fk [TODO:type]: [TODO:description]
+    """
 
     all_columns = get_table_schema("QuoteAssembly")
     excluded_columns = ["QuoteFK", "QuoteAssemblyPK", "LastAccess", "ParentQuoteAssemblyFK", "ParentQuoteFK"]
@@ -52,3 +58,25 @@ def copy_operations_to_quote(cursor: pyodbc.Cursor, new_quote_fk, source_quote_f
     cursor.execute(query, (new_quote_fk, source_quote_fk))
     LOGGER.info(f"Copied QuotePK: {source_quote_fk} to NEW QuotePK: {new_quote_fk}")
 
+
+@with_db_conn()
+def get_quote_assembly_pk(cursor: pyodbc.Cursor, **quote_details) -> int | None:
+    """
+    [TODO:description]
+
+    :param cursor: [TODO:description]
+    :return: [TODO:description]
+    :raises ValueError: [TODO:description]
+    """
+    if not quote_details:
+        raise ValueError("At least one condition must be provided to get an item.")
+
+    where_conditions = " AND ".join([f"{key} = ?" for key in quote_details.keys()])
+    query = f"SELECT QuoteAssemblyPK FROM QuoteAssembly WHERE {where_conditions};"
+
+    values = tuple(quote_details.values())
+
+    cursor.execute(query, values)
+    result = cursor.fetchone()
+
+    return result[0] if result else None
