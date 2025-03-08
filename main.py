@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 from tkcalendar import Calendar
 from threading import Thread
+from src import controller
 from src.general_class import TableManger
 from src.mie_trak import MieTrak
 from src.helper import (
@@ -485,7 +486,9 @@ class RfqGen(tk.Tk):
         # dictionary with file path as key and the pk of the document group
         path_dict = {}
         estimation_path_dict = {}
-        user_selected_file_paths = list(self.file_path_PL_entry.get(0, tk.END))
+        user_selected_file_paths = list(
+            self.file_path_PL_entry.get(0, tk.END)
+        )  # parts list file upload
 
         # TODO: file path pr entry to estimation folder docs
         estimation_folder_docs = list(
@@ -493,7 +496,6 @@ class RfqGen(tk.Tk):
             + self.file_path_estimating_entry.get(0, tk.END)
         )
         order_by_counter = 1
-        count = 1
 
         LOGGER.debug("Generating items for Mat, HT and OP for...")
         part_mat_ht_op_dict = generate_item_pks(info_dict)
@@ -518,6 +520,9 @@ class RfqGen(tk.Tk):
                 or hardware_or_supplies == "Tooling - Manufactured"
             ):  # if main part of tooling.
                 LOGGER.debug("Hardware/supplies is not None or tooling.")
+
+                # PREPARE DOCUMENTS ------------------------------
+
                 if self.itar_restricted_var.get():  # checking if the user clicked on Restricted box or not and based on that destination path is decided
                     # pass
                     destination_path = (
@@ -582,25 +587,19 @@ class RfqGen(tk.Tk):
                         estimation_path_dict[file_path_to_add_to_rfq] = None
 
                 # Uploading documents to the RFQ with a counter so that the same document is not uploaded more than once
+                # UPDATE: Counter removed: function checks if the file is inserted or not.
                 for file, pk in estimation_path_dict.items():
                     # TODO; Use the estiamtion folder dict to upload here
-                    if count == 1:
-                        if restricted:
-                            self.data_base_conn.upload_documents(
-                                file,
-                                rfq_fk=rfq_pk,
-                                document_type_fk=6,
-                                secure_document=1,
-                                document_group_pk=pk,
-                            )
-                        else:
-                            self.data_base_conn.upload_documents(
-                                file,
-                                rfq_fk=rfq_pk,
-                                document_type_fk=6,
-                                document_group_pk=pk,
-                            )
-                count += 1
+                    request_for_quote.upload_documents_to_rfq_or_item(
+                        file,
+                        rfq_fk=rfq_pk,
+                        document_type_fk=6,
+                        secure_document=1 if restricted else 0,
+                        document_group_pk=pk,
+                    )
+
+                # ---------------------------------------------------------
+
                 # searching for the part on MIE Trak and returns the PK, if the part doesn't exist then it creates an item and returns the pk
                 item_dict = {
                     "PartNumber": key,
@@ -621,7 +620,7 @@ class RfqGen(tk.Tk):
                 }
                 for url, pk in matching_paths.items():
                     if restricted:
-                        self.data_base_conn.upload_documents(
+                        request_for_quote.upload_documents_to_rfq_or_item(
                             url,
                             item_fk=item_pk,
                             document_type_fk=2,
@@ -629,7 +628,7 @@ class RfqGen(tk.Tk):
                             document_group_pk=pk,
                         )
                     else:
-                        self.data_base_conn.upload_documents(
+                        request_for_quote.upload_documents_to_rfq_or_item(
                             url,
                             item_fk=item_pk,
                             document_type_fk=2,
@@ -752,7 +751,7 @@ class RfqGen(tk.Tk):
                 ct += 10
 
         # TODO: throw error if no RFQ PK?
-        self.create_rfq(
+        controller.create_rfq(
             quote_pk_dict, item_pk_dict, rfq_pk, info_dict
         )  # checking if the Assy or Detail and creating the line item and adding quotes of assembly to the BOM of Assy Line Quotes
 
@@ -820,7 +819,7 @@ class RfqGen(tk.Tk):
 
         parent_quote_assembly_pk_dict = {}
         for new_key, value in info_dict.items():
-            if self.ends_with_suffix(new_key) is None:
+            if self.ends_with_suffix(new_key) is None:  # this is always falase.
                 key = new_key
             else:
                 key = new_key.split("_____")[0]

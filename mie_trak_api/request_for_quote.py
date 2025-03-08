@@ -236,3 +236,60 @@ def create_rfq_line_item_with_qty(
     LOGGER.debug("Qty Updated.")
 
     return rfq_line_pk
+
+
+@with_db_conn(commit=True)
+def upload_documents_to_rfq_or_item(
+    cursor: pyodbc.Cursor,
+    document_path: str,
+    rfq_fk: int | None = None,
+    item_fk: int | None = None,
+    document_type_fk: int | None = None,
+    secure_document=0,
+    document_group_pk=None,
+    print_with_purchase_order=None,
+) -> None:
+    """
+    [TODO:description]
+
+    :param cursor: [TODO:description]
+    :param document_path: [TODO:description]
+    :param rfq_fk: [TODO:description]
+    :param item_fk: [TODO:description]
+    :param document_type_fk: [TODO:description]
+    :param secure_document [TODO:type]: [TODO:description]
+    :param document_group_pk [TODO:type]: [TODO:description]
+    :param print_with_purchase_order [TODO:type]: [TODO:description]
+    """
+    search_query = """
+        SELECT COUNT(*) FROM Document 
+        WHERE (ItemFK = ? OR RequestForQuoteFK = ?) AND URL = ?;
+    """
+    cursor.execute(search_query, (item_fk, rfq_fk, document_path))
+
+    found = cursor.fetchone()[0] > 0  # type: ignore
+
+    if not found:
+        insert_query = """
+            INSERT INTO Document
+            (URL, RequestForQuoteFK, ItemFK, Active, DocumentTypeFK, SecureDocument, DocumentGroupFK, PrintWithPurchaseOrder)
+            VALUES (?, ?, ?, 1, ?, ?, ?, ?);
+        """
+        cursor.execute(
+            insert_query,
+            (
+                document_path,
+                rfq_fk,
+                item_fk,
+                document_type_fk,
+                secure_document,
+                document_group_pk,
+                print_with_purchase_order,
+            ),
+        )
+        LOGGER.info(
+            f"INSERTED doc - {document_path} to RFQ PK {rfq_fk} / Item PK {item_fk}..."
+        )
+    LOGGER.info(
+        f"FOUND doc - {document_path} in RFQ PK {rfq_fk} / Item PK {item_fk}..."
+    )
