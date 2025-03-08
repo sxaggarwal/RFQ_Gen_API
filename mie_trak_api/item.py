@@ -20,10 +20,10 @@ def get_or_create_item(cursor: pyodbc.Cursor, **item_data):
     :raises ValueError: [TODO:description]
     """
 
-    if not item_data.get("PartNumber", None):
-        raise ValueError("kwargs must contain a part number")
+    # if not item_data.get("PartNumber", None):
+    #     raise ValueError("kwargs must contain a part number")
 
-    part_number = item_data.get("PartNumber")
+    part_number = item_data.get("PartNumber", "")
     cursor.execute("SELECT ItemPK FROM Item WHERE PartNumber = ?", (part_number,))
     result = cursor.fetchone()
 
@@ -96,3 +96,8 @@ def update_item(cursor, itempk: int, **item_data) -> None:
     LOGGER.debug(query)
     cursor.execute(query)
     LOGGER.info(f"Updated ItemPK: {itempk}.")
+
+
+@with_db_conn(commit=True)
+def get_or_create_tooling(cursor: pyodbc.Cursor, description) -> int:
+    search_query = f"Select ItemPK from Item Where Description='{description}' AND PartNumber LIKE '05-%'"

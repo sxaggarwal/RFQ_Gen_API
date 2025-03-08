@@ -422,10 +422,6 @@ class RfqGen(tk.Tk):
             self.reset_gui()
             return
 
-        # info_dict = create_dict_from_excel(
-        #     self.file_path_PR_entry.get(0, tk.END)[0]
-        # )  # returns a dict with the dimensional and other details as values and part number as key
-
         LOGGER.debug("Extracting excel...")
         info_dict: Dict[str, Dict[str, Any]] = create_dict_from_excel_new(
             self.file_path_PR_entry.get(0, tk.END)[0]
@@ -498,10 +494,6 @@ class RfqGen(tk.Tk):
         )
         order_by_counter = 1
         count = 1
-
-        # part_mat_ht_op_dict = pk_info_dict(
-        #     info_dict
-        # )  # returns a dict with part_number as key and mat_pk, ht_pk, fin_pk as values
 
         LOGGER.debug("Generating items for Mat, HT and OP for...")
         part_mat_ht_op_dict = generate_item_pks(info_dict)
@@ -713,7 +705,7 @@ class RfqGen(tk.Tk):
                 fk = quote_pk_dict.get(part_num)
                 if value.get("hardware_or_supplies", "") == "Hardware":
                     quote_assembly_pk = quote.get_quote_assembly_pk(
-                        {"QuoteFK": fk, "SequenceNumber": 24}
+                        **{"QuoteFK": fk, "SequenceNumber": 24}
                     )
                     item_fk = check_and_create_tooling(value.get("description", ""))
                     bom.create_bom_quote(
@@ -722,35 +714,37 @@ class RfqGen(tk.Tk):
                         quote_assembly_pk,
                         24,
                         order_by_counter,
-                        quantity_reqd=value.get("quantity_required", 1.00),
+                        QuantityRequired=value.get("quantity_required", 1.00),
                     )
                     order_by_counter += 1
                 elif value.get("hardware_or_supplies", "") == "Tooling":
                     quote_assembly_pk = self.quote_assembly_table.get(
                         "QuoteAssemblyPK", QuoteFK=fk, SequenceNumber=8
                     )
-                    item_fk = self.data_base_conn.get_or_create_item(
-                        key,
-                        description=value.get("description"),
-                        item_type_fk=7,
-                        mps_item=0,
-                        purchase=0,
-                        forecast_on_mrp=0,
-                        mps_on_mrp=0,
-                        service_item=0,
-                        ship_loose=0,
-                        bulk_ship=0,
-                        can_not_create_work_order=1,
-                        can_not_invoice=1,
-                        manufactured_item=1,
+                    item_fk = item.get_or_create_item(
+                        **{
+                            "PartNumber": key,
+                            "Description": value.get("description"),
+                            "ItemTypeFK": 7,
+                            "MpsItem": 0,
+                            "Purchase": 0,
+                            "ForecastOnMRP": 0,
+                            "MpsOnMRP": 0,
+                            "ServiceItem": 0,
+                            "ShipLoose": 0,
+                            "BulkShip": 0,
+                            "CanNotCreateWorkOrder": 1,
+                            "CanNotInvoice": 1,
+                            "ManufacturedItem": 1,
+                        }
                     )
-                    self.data_base_conn.create_bom_quote(
+                    bom.create_bom_quote(
                         fk,
                         item_fk,
                         quote_assembly_pk,
                         8,
                         order_by_counter,
-                        quantity_reqd=value.get("quantity_required", 1.00),
+                        QuantityRequired=value.get("quantity_required", 1.00),
                     )
                     order_by_counter += 1
             loading_screen.set_progress(ct)
@@ -763,9 +757,8 @@ class RfqGen(tk.Tk):
         )  # checking if the Assy or Detail and creating the line item and adding quotes of assembly to the BOM of Assy Line Quotes
 
         for value in quote_pk_dict.values():
-            self.data_base_conn.create_quote_assembly_formula_variable(
-                value
-            )  # Inserting the formulas and variables in the Quote Assembly
+            quote.create_quote_assembly_formula_variable(value)
+
         loading_screen.set_progress(100)
         messagebox.showinfo(
             "Success", f"RFQ generated successfully! RFQ Number: {rfq_pk}"
@@ -811,92 +804,6 @@ class RfqGen(tk.Tk):
     def ends_with_suffix(self, s):
         return re.search(r"_____\d+$", s) is not None
 
-    # unused
-    def process_rfq(
-        self,
-        quote_pk_dict,
-        item_pk_dict,
-        rfq_pk,
-        info_dict,
-        parent_key=None,
-        parent_quote_fk=None,
-        i=1,
-        j=0,
-        parent_quote_assembly_fk=None,
-        key_list=[],
-        assy_key_list=[],
-    ):
-        """checks if its Assy or Detail and accordingly creates the line item and adds quotes of assembly to the BOM of Assy Line Quotes"""
-        for key, value in info_dict.items():
-            parent_quote_assembly_pk = None  # key = 1
-            if (value[12] is None and key not in key_list) or (
-                value[12] == parent_key
-                and value[13] is None
-                and key not in assy_key_list
-                and parent_key is not None
-            ):
-                quote_pk = quote_pk_dict.get(key)
-                item_pk = item_pk_dict.get(key)
-
-                if value[12] is None and key not in key_list:
-                    # Initial creation of rfq line item
-                    rfq_line_pk = self.data_base_conn.create_rfq_line_item(
-                        item_pk, rfq_pk, i, quote_pk, quantity=value[10]
-                    )
-                    i += 1
-                    self.data_base_conn.rfq_line_qty(rfq_line_pk, value[10])
-                    self.main_quote_pk = quote_pk
-                    j = 0
-                    print(f"PK: {self.main_quote_pk}")
-                    parent_quote_assembly_pk = None
-                    key_list.append(key)
-
-                elif (
-                    value[13] is None
-                    and value[12] == parent_key
-                    and key not in assy_key_list
-                    and parent_key is not None
-                ):
-                    parent_key_quote_pk = quote_pk_dict.get(parent_key)
-                    if j == 0:
-                        parent_quote_assembly_pk = (
-                            self.data_base_conn.create_assy_quote(
-                                quote_pk, parent_quote_fk, value[10]
-                            )
-                        )
-                        j += 1
-                        assy_key_list.append(key)
-                    else:
-                        parent_quote_assembly_pk = (
-                            self.data_base_conn.create_assy_quote(
-                                quote_pk,
-                                parent_quote_fk,
-                                value[10],
-                                parent_quote_fk=parent_key_quote_pk,
-                                parent_quote_asembly=parent_quote_assembly_fk,
-                            )
-                        )
-                        j += 1
-                        assy_key_list.append(key)
-                # elif value[13] == "Tooling - Manufactured":
-                #     parent_key_quote_pk = quote_pk_dict.get(parent_key)
-                #     parent_quote_assembly_pk = self.data_base_conn.create_assy_quote(quote_pk, parent_quote_fk, value[10], parent_quote_fk=parent_key_quote_pk, parent_quote_asembly=parent_quote_assembly_fk)
-                #     j+=1
-                # Recursive function
-                self.process_rfq(
-                    quote_pk_dict,
-                    item_pk_dict,
-                    rfq_pk,
-                    info_dict,
-                    parent_key=key,
-                    parent_quote_fk=self.main_quote_pk,
-                    i=i,
-                    j=j,
-                    parent_quote_assembly_fk=parent_quote_assembly_pk,
-                    key_list=key_list,
-                    assy_key_list=assy_key_list,
-                )
-
     def create_rfq(
         self,
         quote_pk_dict,
@@ -924,27 +831,27 @@ class RfqGen(tk.Tk):
             item_pk = item_pk_dict.get(part_number)
 
             if not assy_for:
-                rfq_line_pk = self.data_base_conn.create_rfq_line_item(
+                rfq_line_pk = request_for_quote.create_rfq_line_item_with_qty(
                     item_pk,
                     rfq_pk,
                     i,
                     quote_pk,
-                    quantity=value.get("quantity_required", 1.00),
+                    quantity=value.get("quantity_required"),
                 )
+                LOGGER.debug(f"{rfq_line_pk}")
                 i += 1
-                self.data_base_conn.rfq_line_qty(
-                    rfq_line_pk, value.get("quantity_required", 1)
-                )
                 main_quote_pk = quote_pk
                 main_part_number = part_number
 
-            elif assy_for and value.get("hardware_or_supplies", None) is None:
+            elif assy_for and not value.get("hardware_or_supplies"):
+                LOGGER.debug("executing hardware or supplies...")
+
                 if not main_part_number or not main_quote_pk:
                     raise ValueError("Data from excel sheet is not proper bruh.")
 
                 if assy_for == main_part_number:
                     quote_fk = main_quote_pk
-                    parent_quote_assembly_pk = self.data_base_conn.create_assy_quote(
+                    parent_quote_assembly_pk = quote.create_assy_quote(
                         quote_pk, quote_fk, value.get("quantity_required", "")
                     )
                     parent_quote_assembly_pk_dict[part_number] = (
@@ -952,6 +859,7 @@ class RfqGen(tk.Tk):
                     )
 
                 else:
+                    LOGGER.debug("executing else in create RFQ.")
                     parent_quote_fk = quote_pk_dict[assy_for]
                     if assy_for not in parent_quote_assembly_pk_dict:
                         raise KeyError(
@@ -960,7 +868,7 @@ class RfqGen(tk.Tk):
                     parent_quote_assembly_pk_new = parent_quote_assembly_pk_dict[
                         assy_for
                     ]
-                    parent_quote_assembly_pk = self.data_base_conn.create_assy_quote(
+                    parent_quote_assembly_pk = quote.create_assy_quote(
                         quote_pk,
                         main_quote_pk,
                         value.get("quantity_required", 1),
@@ -1114,22 +1022,10 @@ class RfqGen(tk.Tk):
                                 document_group_pk=pk,
                             )
             messagebox.showinfo("Success", "Item added successfully!")
-            self.customer_select_box.set("")
-            self.buyer_select_box.set("")
-            self.customer_info_text.delete(1.0, tk.END)
-            self.file_path_PL_entry.delete(0, tk.END)
-            self.file_path_PR_entry.delete(0, tk.END)
-            self.file_path_estimating_entry.delete(0, tk.END)
-            self.rfq_number_text.delete(0, tk.END)
+            self.reset_gui()
         else:
             messagebox.showerror("ERROR", "Upload Parts to be added File")
-            self.customer_select_box.set("")
-            self.buyer_select_box.set("")
-            self.customer_info_text.delete(1.0, tk.END)
-            self.file_path_PR_entry.delete(0, tk.END)
-            self.file_path_PL_entry.delete(0, tk.END)
-            self.file_path_estimating_entry.delete(0, tk.END)
-            self.rfq_number_text.delete(0, tk.END)
+            self.reset_gui()
 
     def update_rfq(self):
         """Updates RFQ by deleting old quotes and creating new quotes for a RFQ"""
@@ -1139,7 +1035,7 @@ class RfqGen(tk.Tk):
             and self.file_path_PR_entry.get(0)
         ):
             rfq_pk = self.update_rfq_number_text.get()
-            self.data_base_conn.delete_rfq_line_pk(rfq_pk)
+            request_for_quote.reset_rfq(rfq_pk)
             loading_screen = LoadingScreen(self, max_progress=100)
             Thread(
                 target=self.generate_rfq,

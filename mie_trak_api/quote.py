@@ -7,7 +7,13 @@ LOGGER = getlogger("MT Quote")
 
 
 @with_db_conn(commit=True)
-def create_quote_new(cursor: pyodbc.Cursor, customer_fk: int, item_fk: int, quote_type: int, part_number: str):
+def create_quote_new(
+    cursor: pyodbc.Cursor,
+    customer_fk: int,
+    item_fk: int,
+    quote_type: int,
+    part_number: str,
+):
     """
     [TODO:description]
 
@@ -43,9 +49,19 @@ def copy_operations_to_quote(cursor: pyodbc.Cursor, new_quote_fk, source_quote_f
     """
 
     all_columns = get_table_schema("QuoteAssembly")
-    excluded_columns = ["QuoteFK", "QuoteAssemblyPK", "LastAccess", "ParentQuoteAssemblyFK", "ParentQuoteFK"]
+    excluded_columns = [
+        "QuoteFK",
+        "QuoteAssemblyPK",
+        "LastAccess",
+        "ParentQuoteAssemblyFK",
+        "ParentQuoteFK",
+    ]
 
-    columns_to_copy = [column.get("column_name") for column in all_columns if column.get("column_name") not in excluded_columns]
+    columns_to_copy = [
+        column.get("column_name")
+        for column in all_columns
+        if column.get("column_name") not in excluded_columns
+    ]
     column_names = ", ".join(columns_to_copy)  # Convert list to SQL-friendly format
 
     query = f"""
@@ -57,6 +73,31 @@ def copy_operations_to_quote(cursor: pyodbc.Cursor, new_quote_fk, source_quote_f
 
     cursor.execute(query, (new_quote_fk, source_quote_fk))
     LOGGER.info(f"Copied QuotePK: {source_quote_fk} to NEW QuotePK: {new_quote_fk}")
+
+
+@with_db_conn()
+def get_operation_quote_template(cursor: pyodbc.Cursor, quote_fk: int = 494):
+    all_columns = get_table_schema("QuoteAssembly")
+    excluded_columns = [
+        "QuoteFK",
+        "QuoteAssemblyPK",
+        "LastAccess",
+        "ParentQuoteAssemblyFK",
+        "ParentQuoteFK",
+    ]
+
+    columns_to_copy = [
+        str(column.get("column_name"))
+        for column in all_columns
+        if column.get("column_name") not in excluded_columns
+    ]
+    column_names = ", ".join(columns_to_copy)  # Convert list to SQL-friendly format
+
+    query = f"SELECT {column_names} FROM QuoteAssembly WHERE QuoteFK=?"
+    cursor.execute(query, (quote_fk,))
+    template_values = cursor.fetchall()
+
+    return columns_to_copy, template_values
 
 
 @with_db_conn()
@@ -80,3 +121,81 @@ def get_quote_assembly_pk(cursor: pyodbc.Cursor, **quote_details) -> int | None:
     result = cursor.fetchone()
 
     return result[0] if result else None
+
+
+@with_db_conn(commit=True)
+def create_quote_assembly_formula_variable(cursor: pyodbc.Cursor, quote_pk):
+    """
+    [TODO:description]
+
+    :param self [TODO:type]: [TODO:description]
+    :param quote_pk [TODO:type]: [TODO:description]
+    """
+    query = """
+        INSERT INTO QuoteAssemblyFormulaVariable
+            (QuoteAssemblyFK, OperationFormulaVariableFK, FormulaType, VariableValue)
+        SELECT 
+            QuoteAssemblyPK, SetupFormulaFK, 0, SetupTime
+        FROM QuoteAssembly
+        WHERE QuoteFK = ? AND OperationFK IS NOT NULL
+
+        UNION ALL 
+
+        SELECT 
+            QuoteAssemblyPK, RunFormulaFK, 1, RunTime
+        FROM QuoteAssembly
+        WHERE QuoteFK = ? AND OperationFK IS NOT NULL
+    """
+
+    cursor.execute(query, (quote_pk, quote_pk))
+
+
+@with_db_conn(commit=True)
+def create_assy_quote(
+    cursor: pyodbc.Cursor,
+    quote_to_be_added,
+    quotefk,
+    qty_req=1,
+    parent_quote_fk=None,
+    parent_quote_asembly=None,
+):
+    """
+    Creates Quote for Assembly parts by inserting a new QuoteAssembly record and copying related operations.
+    """
+    insert_query = """
+        INSERT INTO QuoteAssembly 
+        (QuoteFK, ItemQuoteFK, SequenceNumber, Pull, Lock, OrderBy, QuantityRequired, ParentQuoteFK, ParentQuoteAssemblyFK)
+        VALUES (?, ?, 1, 0, 0, 1, ?, ?, ?);
+    """
+
+    cursor.execute(
+        insert_query,
+        (quotefk, quote_to_be_added, qty_req, parent_quote_fk, parent_quote_asembly),
+    )
+    cursor.execute("SELECT IDENT_CURRENT('QuoteAssembly');")
+    result = cursor.fetchone()
+
+    if not result or result[0] is None:
+        raise ValueError("Quote PK was not returned by the database.")
+
+    pk = int(result[0])
+    LOGGER.debug(f"Inserted QuoteAssembly PK: {pk}.")
+
+    # get quote operation template:
+    column_names, template_values = get_operation_quote_template()
+    for data in template_values:
+        insert_dict = dict(zip(column_names, data))
+        insert_dict["QuoteFK"] = quotefk
+        insert_dict["ParentQuoteAssemblyFK"] = pk
+        insert_dict["ParentQuoteFK"] = quote_to_be_added
+
+        insert_columns = ", ".join(insert_dict.keys())
+        placeholders = ", ".join(["?"] * len(insert_dict))
+        insert_query = (
+            f"INSERT INTO QuoteAssembly ({insert_columns}) VALUES ({placeholders})"
+        )
+
+        cursor.execute(insert_query, tuple(insert_dict.values()))
+    LOGGER.debug("inserted quote operation template values.")
+
+    return pk
