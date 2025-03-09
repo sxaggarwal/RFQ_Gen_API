@@ -23,7 +23,7 @@ def get_party_shortname_email(cursor, party_pk: int) -> Tuple[str, str]:
 
 
 @with_db_conn()
-def get_all_buyers_for_party(cursor, party_pk: int):
+def get_all_buyers_for_party(cursor, party_pk: int) -> Dict[int, str]:
     query = """
         SELECT p.Name, pb.BuyerFK
         FROM PartyBuyer pb
@@ -38,7 +38,6 @@ def get_all_buyers_for_party(cursor, party_pk: int):
         raise ValueError(f"Database did not return any values for PartyPK: {party_pk}")
 
     return {buyer_fk: name for name, buyer_fk in results}
-
 
 
 @with_db_conn()
@@ -64,7 +63,9 @@ def get_party_address(cursor, party_pk: int) -> Dict[str, Any]:
     result = cursor.fetchone()
 
     if not result:
-        raise ValueError(f"MT did not return any values for query:\n{query}\nPartyFK: {party_pk}")
+        raise ValueError(
+            f"MT did not return any values for query:\n{query}\nPartyFK: {party_pk}"
+        )
 
     address_details = {
         "address_pk": result[0],
@@ -75,7 +76,7 @@ def get_party_address(cursor, party_pk: int) -> Dict[str, Any]:
         "city": result[5],
         "zip_code": result[6],
         "state": result[7],  # No need to store it as a tuple
-        "country": result[8]
-        }
+        "country": result[8],
+    }
 
     return address_details

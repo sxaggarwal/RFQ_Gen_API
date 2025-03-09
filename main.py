@@ -19,6 +19,7 @@ from mie_trak_api import bom, item, party, request_for_quote, quote, router
 from base_logger import getlogger
 from src.excel_parser import create_dict_from_excel_new, generate_item_pks
 from pprint import pprint
+from src.cust_buyer_selection_gui import CustomerSelectionGUI
 
 
 LOGGER = getlogger("Main")
@@ -53,62 +54,6 @@ class LoadingScreen(tk.Toplevel):
         pass
 
 
-class AddBuyerScreen(tk.Toplevel):
-    """Display window when user tries to add a buyer"""
-
-    def __init__(self, master, party_pk, party_name):
-        super().__init__(master)
-        self.title(f"Add Buyer for Customer: {party_name}, PartyPK: {party_pk}")
-        self.geometry("500x300")
-        self.attributes("-topmost", True)
-        self.grab_set()
-        tk.Label(self, text="Name: ").grid(row=0, column=0)
-        self.buyer_name_box = tk.Entry(self, width=20)
-        self.buyer_name_box.grid(row=0, column=1)
-        tk.Label(self, text="Short Name: ").grid(row=1, column=0)
-        self.short_name_box = tk.Entry(self, width=20)
-        self.short_name_box.grid(row=1, column=1)
-        tk.Label(self, text="Email: ").grid(row=2, column=0)
-        self.email_id_box = tk.Entry(self, width=20)
-        self.email_id_box.grid(row=2, column=1)
-        tk.Label(self, text="Phone Number: ").grid(row=3, column=0)
-        self.phone_number_box = tk.Entry(self, width=20)
-        self.phone_number_box.grid(row=3, column=1)
-        tk.Label(self, text="Title: ").grid(row=4, column=0)
-        self.title_box = tk.Entry(self, width=20)
-        self.title_box.grid(row=4, column=1)
-        save_button = tk.Button(
-            self, text="Save", command=lambda: self.save_buyer_info(party_pk)
-        )
-        save_button.grid(row=5, column=1)
-
-    def save_buyer_info(self, party_pk):
-        """Inserts the buyers data in the database"""
-        if self.buyer_name_box.get():
-            buyer_info_dict = {
-                "Name": self.buyer_name_box.get(),
-                "Email": self.email_id_box.get(),
-                "Phone": self.phone_number_box.get(),
-                "ShortName": self.short_name_box.get(),
-                "Title": self.title_box.get(),
-                "Buyer": 1,
-                "HardwareCertificationFK": 1,
-                "MaterialCertificationFK": 1,
-                "OutsideProcessingCertificationFK": 1,
-                "QualityLevelFK": 2,
-                "KeepDocumentOnFile": 1,
-                "FirstArticleFK": 1,
-            }
-            buyer_pk = MieTrak().create_buyer(buyer_info_dict, party_pk)
-            messagebox.showinfo(
-                "Success", f"Buyer created successfully! BuyerPK: {buyer_pk}"
-            )
-            self.master.update_buyer_combobox()  # TODO: this should be a callback
-            self.destroy()
-        else:
-            messagebox.showerror("ERROR", "Please Enter Name")
-
-
 class RfqGen(tk.Tk):
     """Main class with main window and generate rfq function"""
 
@@ -116,153 +61,253 @@ class RfqGen(tk.Tk):
         super().__init__()
         self.title("RFQGen")
         self.geometry("950x500")
-        self.data_base_conn = MieTrak()
-        self.customer_data = party.get_all_party_data()
-        self.filtered_dict = None  # we append search results to this.
-        self.quote_assembly_table = TableManger("QuoteAssembly")
+
+        controller.center_window(self)
+
+        # self.data_base_conn = MieTrak()
+        self.files = {
+            "Excel files": [],
+            "Estimation files": [],
+            "Parts Requested Files": [],
+        }
+        self.party_details = None
         self.make_combobox()
 
-    def filter_combobox(self, event):
-        """Filter for selecting customers, type and search"""
-        current_text = self.customer_select_box.get().lower()
-        self.customer_select_box["values"] = ()
-        self.filtered_dict = {
-            pk: name
-            for pk, name in self.customer_data.items()
-            if name.lower().startswith(current_text)
-        }
-        self.customer_select_box["values"] = list(self.filtered_dict.values())
-
-    def filter_buyer_box(self, event):
-        """filtering buyer, type and search"""
-        current_text = self.buyer_select_box.get().lower()
-        self.buyer_select_box["values"] = ()
-        filtered_values = [
-            name
-            for name in list(self.buyer_dict.keys())
-            if name.lower().startswith(current_text)
-        ]
-        self.buyer_select_box["values"] = filtered_values
-
     def make_combobox(self):
-        """Main window GUI"""
+        """Updated Main Window GUI layout with Frames for better structure and flexibility using grid only."""
 
-        # Customer select combobox
-        tk.Label(self, text="Select Customer: ").grid(row=0, column=1)
-        self.customer_select_box = ttk.Combobox(
-            self, values=list(self.customer_data.values()), state="normal"
+        # Configure main frame columns for responsiveness.
+        for i in range(6):
+            self.grid_columnconfigure(i, weight=1)
+
+        # We'll let row 3 (the File Upload Section) take extra vertical space.
+        self.grid_rowconfigure(3, weight=1)
+
+        # --- Row 0: Heading ---
+        heading_frame = tk.Frame(self)
+        heading_frame.grid(row=0, column=0, columnspan=6, pady=10, sticky="ew")
+        heading_frame.grid_columnconfigure(0, weight=1)
+        self.heading_label = tk.Label(
+            heading_frame, text="RFQ Gen", font=("Helvetica", 16, "bold")
         )
-        self.customer_select_box.grid(row=1, column=1)
+        self.heading_label.grid(row=0, column=0, sticky="ew")
 
-        tk.Label(self, text="Selected Customer/ Buyer Info: ").grid(row=5, column=1)
-        self.customer_info_text = tk.Text(self, height=4, width=30)
-        self.customer_info_text.grid(row=6, column=1)
+        # --- Row 1: Customer, Buyer, and RFQ# in one frame ---
+        info_frame = tk.Frame(self)
+        info_frame.grid(row=1, column=0, columnspan=6, pady=5, sticky="ew")
+        for i in range(3):
+            info_frame.grid_columnconfigure(i, weight=1)
 
-        # Applying filter
-        self.filtered_indices = []
-        self.customer_select_box.bind("<KeyRelease>", self.filter_combobox)
-
-        # Bind the combobox selection event to update customer information
-        self.customer_select_box.bind("<<ComboboxSelected>>", self.update_customer_info)
-
-        # Buyer Selection box
-        tk.Label(self, text="Select Buyer: ").grid(row=2, column=1)
-        self.buyer_select_box = ttk.Combobox(self, state="normal")
-        self.buyer_select_box.grid(row=3, column=1)
-
-        self.buyer_select_box.bind("<KeyRelease>", self.filter_buyer_box)
-
-        add_buyer_button = tk.Button(
-            self, text="ADD Buyer", command=self.open_add_buyer_screen
+        # Row 0: Customer and Buyer info with Add button.
+        self.customer_info_label = tk.Label(
+            info_frame,
+            text="Customer:\nNot Selected",
+            anchor="w",
+            justify="left",
+            wraplength=250,
         )
-        add_buyer_button.grid(row=4, column=1)
+        self.customer_info_label.grid(row=0, column=0, padx=5, pady=2, sticky="ew")
 
-        self.buyer_select_box.bind("<<ComboboxSelected>>", self.update_buyer_info)
-
-        tk.Label(self, text="Enter Customer RFQ Number: ").grid(row=7, column=1)
-        self.rfq_number_text = tk.Entry(self, width=50)
-        self.rfq_number_text.grid(row=8, column=1)
-
-        # Entrybox for the requested parts in an Excel file. (upload for Excel file)
-        tk.Label(self, text="Parts Requested File:").grid(row=9, column=1)
-        self.file_path_PR_entry = tk.Listbox(self, height=2, width=50)
-        self.file_path_PR_entry.grid(row=10, column=1)
-
-        browse_button_1 = tk.Button(
-            self,
-            text="Browse Files",
-            command=lambda: self.browse_files_parts_requested(
-                "Excel files", self.file_path_PR_entry
-            ),
+        # Buyer label shifted to the right with extra left padding.
+        self.buyer_info_label = tk.Label(
+            info_frame,
+            text="Buyer:\nNot Selected",
+            anchor="w",
+            justify="left",
+            wraplength=250,
         )
-        browse_button_1.grid(row=11, column=1)
+        self.buyer_info_label.grid(row=0, column=1, padx=(20, 5), pady=2, sticky="ew")
 
-        # Selection/ Upload for PartList
-        tk.Label(self, text="Part Lists File (PL):").grid(row=9, column=2)
-        self.file_path_PL_entry = tk.Listbox(self, height=2, width=50)
-        self.file_path_PL_entry.grid(row=10, column=2)
-
-        browse_button_part_list = tk.Button(
-            self,
-            text="Browse Files",
-            command=lambda: self.browse_files_parts_requested(
-                "All files", self.file_path_PL_entry
-            ),
+        self.add_button = tk.Button(
+            info_frame, text="Add", command=self.open_add_buyer_screen
         )
-        browse_button_part_list.grid(row=11, column=2)
+        self.add_button.grid(row=0, column=2, padx=5, pady=2, sticky="e")
 
-        tk.Label(self, text="Estimating Documents:").grid(row=9, column=0)
-        self.file_path_estimating_entry = tk.Listbox(self, height=2, width=50)
-        self.file_path_estimating_entry.grid(row=10, column=0)
+        # Row 1: RFQ Number label and entry with extra top padding.
+        self.rfq_number_label = tk.Label(info_frame, text="Customer RFQ#:")
+        self.rfq_number_label.grid(row=1, column=0, padx=5, pady=(10, 2), sticky="w")
 
-        browse_button_estimating = tk.Button(
-            self,
-            text="Browse Files",
-            command=lambda: self.browse_files_parts_requested(
-                "All files", self.file_path_estimating_entry
-            ),
+        self.rfq_number_text = tk.Entry(info_frame, width=50)
+        self.rfq_number_text.grid(
+            row=1, column=1, columnspan=2, padx=5, pady=(10, 2), sticky="ew"
         )
-        browse_button_estimating.grid(row=11, column=0)
 
-        # Checkbox for ITAR RESTRICTED
+        # --- Row 2: Separator between Info and File Upload Section ---
+        sep1 = ttk.Separator(self, orient="horizontal")
+        sep1.grid(row=2, column=0, columnspan=6, sticky="ew", pady=5)
+
+        # --- Row 3: File Upload Section ---
+        file_upload_frame = tk.Frame(self)
+        file_upload_frame.grid(row=3, column=0, columnspan=6, pady=5, sticky="nsew")
+        file_upload_frame.grid_columnconfigure(0, weight=1)
+        file_upload_frame.grid_columnconfigure(1, weight=0)
+        file_upload_frame.grid_columnconfigure(2, weight=1)
+        file_upload_frame.grid_rowconfigure(0, weight=0)
+        file_upload_frame.grid_rowconfigure(1, weight=0)
+        file_upload_frame.grid_rowconfigure(2, weight=1)
+
+        # File Upload Heading (centered).
+        self.file_upload_heading = tk.Label(
+            file_upload_frame,
+            text="File Upload Section",
+            font=("Helvetica", 12, "bold"),
+        )
+        self.file_upload_heading.grid(row=0, column=0, columnspan=3, pady=(10, 5))
+
+        # Subframe for the Combobox, now centered.
+        file_type_options_frame = tk.Frame(file_upload_frame)
+        file_type_options_frame.grid(
+            row=1, column=0, columnspan=3, pady=(5, 10), sticky="nsew"
+        )
+        # Use a 3-column grid to center the combobox.
+        file_type_options_frame.grid_columnconfigure(0, weight=1)
+        file_type_options_frame.grid_columnconfigure(1, weight=0)
+        file_type_options_frame.grid_columnconfigure(2, weight=1)
+
+        self.file_type_combo = ttk.Combobox(
+            file_type_options_frame,
+            values=["Excel files", "Estimation files", "Parts Requested Files"],
+            state="readonly",
+            width=15,
+        )
+        self.file_type_combo.set("Excel files")
+        # Place the combobox in the center column.
+        self.file_type_combo.grid(row=0, column=1, padx=5)
+        self.file_type_combo.bind("<<ComboboxSelected>>", self.update_file_display)
+
+        # Subframe for the File Display (Listbox) and bottom row widgets.
+        file_display_upload_frame = tk.Frame(file_upload_frame)
+        file_display_upload_frame.grid(
+            row=2, column=0, columnspan=3, pady=(5, 10), sticky="nsew"
+        )
+        file_display_upload_frame.grid_columnconfigure(0, weight=1)
+        file_display_upload_frame.grid_columnconfigure(1, weight=1)
+        file_display_upload_frame.grid_rowconfigure(0, weight=1)
+
+        self.file_path_PR_entry = tk.Listbox(
+            file_display_upload_frame, height=5, width=80
+        )
+        self.file_path_PR_entry.grid(
+            row=0, column=0, columnspan=2, padx=20, pady=5, sticky="nsew"
+        )
+
+        # In the bottom row, place the ITAR checkbox on the left and the Upload button on the right.
         self.itar_restricted_var = tk.BooleanVar()
         self.itar_restricted_checkbox = tk.Checkbutton(
-            self, text="ITAR RESTRICTED", variable=self.itar_restricted_var
+            file_display_upload_frame,
+            text="ITAR RESTRICTED",
+            variable=self.itar_restricted_var,
         )
-        self.itar_restricted_checkbox.grid(row=13, column=2)
+        self.itar_restricted_checkbox.grid(row=1, column=0, padx=5, pady=5, sticky="w")
 
-        # main button for generating RFQ
-        generate_button = tk.Button(
-            self, text="Generate RFQ", command=self.generate_rfq_with_loading_screen
+        self.upload_button = tk.Button(
+            file_display_upload_frame,
+            text="Upload",
+            command=lambda: self.browse_files_parts_requested(
+                self.file_type_combo.get()
+            ),
         )
-        generate_button.grid(row=17, column=0)
+        self.upload_button.grid(row=1, column=1, padx=5, pady=5, sticky="e")
 
-        # Add or Update Item button
-        add_item_button = tk.Button(self, text="ADD/Update Item", command=self.add_item)
-        add_item_button.grid(row=17, column=2)
+        # --- Row 4: Separator between File Upload and Date Section ---
+        sep2 = ttk.Separator(self, orient="horizontal")
+        sep2.grid(row=4, column=0, columnspan=6, sticky="ew", pady=5)
 
-        # Calendar widgets for selecting Inquiry and Due dates
-        tk.Label(self, text="Enter Inquiry Date (MM/DD/YYYY): ").grid(row=12, column=0)
-        self.inquiry_date_box = tk.Entry(self, width=20)
-        self.inquiry_date_box.grid(row=13, column=0)
-        cal_button = tk.Button(self, text="Cal", command=self.open_calendar)
-        cal_button.grid(row=14, column=0)
+        # --- Row 5: Date Section ---
+        date_frame = tk.Frame(self)
+        date_frame.grid(row=5, column=0, columnspan=6, pady=5, sticky="ew")
+        for i in range(6):
+            date_frame.grid_columnconfigure(i, weight=1)
 
-        tk.Label(self, text="Enter Due Date (MM/DD/YYYY): ").grid(row=12, column=1)
-        self.due_date_box = tk.Entry(self, width=20)
-        self.due_date_box.grid(row=13, column=1)
-        cal_due_button = tk.Button(self, text="Cal", command=self.open_due_calendar)
-        cal_due_button.grid(row=14, column=1)
-
-        # Entry box for RFQ Number that needs to be updated
-        tk.Label(self, text="Enter the RFQ number to be updated: ").grid(
-            row=15, column=1
+        self.inquiry_date_label = tk.Label(
+            date_frame, text="Inquiry Date:", font=("Consolas", 12, "bold")
         )
-        self.update_rfq_number_text = tk.Entry(self, width=20)
-        self.update_rfq_number_text.grid(row=16, column=1)
+        self.inquiry_date_label.grid(row=0, column=0, padx=5, pady=2, sticky="w")
 
-        update_rfq_button = tk.Button(self, text="Update RFQ", command=self.update_rfq)
-        update_rfq_button.grid(row=17, column=1)
+        # Empty label to reserve space.
+        self.inquiry_date_value = tk.Label(date_frame, text="", width=20)
+        self.inquiry_date_value.grid(row=0, column=1, padx=5, pady=2, sticky="nsew")
+
+        self.inquiry_cal_button = tk.Button(
+            date_frame, text="Cal", command=self.open_calendar
+        )
+        self.inquiry_cal_button.grid(row=0, column=2, padx=5, pady=2)
+
+        self.due_date_label = tk.Label(
+            date_frame, text="Due Date:", font=("Consolas", 12, "bold")
+        )
+        self.due_date_label.grid(row=0, column=3, padx=5, pady=2, sticky="w")
+
+        # Empty label to reserve space.
+        self.due_date_value = tk.Label(date_frame, text="", width=20)
+        self.due_date_value.grid(row=0, column=4, padx=5, pady=2, sticky="nsew")
+
+        self.due_cal_button = tk.Button(
+            date_frame, text="Cal", command=self.open_due_calendar
+        )
+        self.due_cal_button.grid(row=0, column=5, padx=5, pady=2)
+
+        # --- Row 6: Action Buttons ---
+        action_frame = tk.Frame(self)
+        action_frame.grid(row=6, column=0, columnspan=6, pady=10, sticky="ew")
+        for i in range(3):
+            action_frame.grid_columnconfigure(i, weight=1)
+
+        self.generate_button = tk.Button(
+            action_frame,
+            text="Generate RFQ",
+            command=self.generate_rfq_with_loading_screen,
+        )
+        self.generate_button.grid(row=0, column=0, padx=5, pady=2, sticky="nsew")
+
+        self.update_rfq_button = tk.Button(
+            action_frame, text="Update RFQ", command=self.update_rfq
+        )
+        self.update_rfq_button.grid(row=0, column=1, padx=5, pady=2, sticky="nsew")
+
+        self.add_item_button = tk.Button(
+            action_frame, text="ADD/Update Item", command=self.add_item
+        )
+        self.add_item_button.grid(row=0, column=2, padx=5, pady=2, sticky="nsew")
+
+    def reset_gui(self):
+        """Resets the GUI elements to their default state."""
+        # Reset Customer and Buyer labels
+        self.customer_info_label.config(text="Customer:\nNot Selected")
+        self.buyer_info_label.config(text="Buyer:\nNot Selected")
+
+        # Reset the RFQ number entry
+        self.rfq_number_text.delete(0, tk.END)
+
+        # Reset the file listboxes
+        self.file_path_PR_entry.delete(0, tk.END)
+
+        # Reset the file selection combobox to default
+        self.file_type_combo.set("Excel files")
+
+        # Reset date values to empty
+        self.inquiry_date_value.config(text="")
+        self.due_date_value.config(text="")
+
+        # Uncheck the ITAR checkbox
+        self.itar_restricted_var.set(False)
+
+        # Reset internal data references
+        self.party_details = None
+        self.files = {
+            "Excel files": [],
+            "Estimation files": [],
+            "Parts Requested Files": [],
+        }
+        # Ensure the file list updates based on default selection
+        self.update_file_display(None)
+
+    def update_file_display(self, event):
+        selected_file_type = self.file_type_combo.get()
+        self.file_path_PR_entry.delete(0, tk.END)
+
+        for file in self.files.get(selected_file_type):  # type: ignore
+            self.file_path_PR_entry.insert(tk.END, file)
 
     def open_calendar(self):
         """Opens the Calendar and selects the date on double click"""
@@ -281,8 +326,7 @@ class RfqGen(tk.Tk):
     def get_selected_inquiry_date(self, event=None):
         """gets the selected inquiry date"""
         selected_date = self.inq_cal.get_date()
-        self.inquiry_date_box.delete(0, tk.END)
-        self.inquiry_date_box.insert(tk.END, selected_date)
+        self.inquiry_date_value.config(text=selected_date)
         self.inq_cal.master.destroy()
 
     def open_due_calendar(self):
@@ -302,8 +346,7 @@ class RfqGen(tk.Tk):
     def get_selected_due_date(self, event=None):
         """gets the selected due date"""
         selected_date = self.due_cal.get_date()
-        self.due_date_box.delete(0, tk.END)
-        self.due_date_box.insert(tk.END, selected_date)
+        self.due_date_value.config(text=selected_date)
         self.due_cal.master.destroy()
 
     def generate_rfq_with_loading_screen(self):
@@ -314,69 +357,55 @@ class RfqGen(tk.Tk):
             target=self.generate_rfq, args=(self.loading_screen,)
         ).start()  # Start RFQ generation in a separate thread
 
+    def add_buyer_customer_callback(self, party_details_dict: Dict[str, Any]):
+        self.party_details = party_details_dict
+        # update GUI
+        customer_update_text = f"Customer Name: {self.party_details.get('party_name')}\nCustomer Email: {self.party_details.get('party_email')}"
+        buyer_update_text = f"Buyer Name: {self.party_details.get('buyer_name')}\nBuyer Email: {self.party_details.get('buyer_email')}"
+        self.customer_info_label.config(text=customer_update_text)
+        self.buyer_info_label.config(text=buyer_update_text)
+
     def open_add_buyer_screen(self):
         """Opens the Add buyer window when the Add button is clicked"""
-        if self.customer_select_box.get():
-            party_pk = self.party_pk
-            name = self.customer_select_box.get()
-            AddBuyerScreen(self, party_pk, name)
-        else:
-            messagebox.showerror("ERROR", "First Select Customer")
+        CustomerSelectionGUI(self.add_buyer_customer_callback)
+        # if self.customer_select_box.get():
+        #     party_pk = self.party_pk
+        #     name = self.customer_select_box.get()
+        #     AddBuyerScreen(self, party_pk, name)
+        # else:
+        #     messagebox.showerror("ERROR", "First Select Customer")
 
-    def update_customer_info(self, event=None):
-        """Update customer information label when a customer is selected."""
-        self.customer_info_text.delete(1.0, tk.END)
-        self.buyer_select_box.set("")
-
-        current_index = self.customer_select_box.current()
-        customer_data_dict = (
-            self.filtered_dict if self.filtered_dict else self.customer_data
-        )
-
-        user_selected_party_pk = list(customer_data_dict.keys())[current_index]
-
-        short_name, email = party.get_party_shortname_email(user_selected_party_pk)
-
-        self.customer_info_text.insert(tk.END, f"Name: {short_name}\nEmail: {email}")
-        self.party_pk = user_selected_party_pk
-
-        self.update_buyer_combobox()
-
-    def update_buyer_info(self, event=None):
-        """Update customer information label when a Buyer is selected"""
-        self.customer_info_text.delete(1.0, tk.END)
-        user_selected_idx = self.buyer_select_box.current()
-        buyer_fk = list(self.buyer_dict.keys())[user_selected_idx]
-        # short_name, email = self.data_base_conn.get_buyer_info(buyer_fk)
-        short_name, email = party.get_party_shortname_email(buyer_fk)
-        self.customer_info_text.insert(tk.END, f"Name: {short_name}\nEmail: {email}")
-
-    def browse_files_parts_requested(self, filetype: str, list_box):
+    def browse_files_parts_requested(self, filepath_dict_key):
         """Browse button for Part requested section, filetype only accepts -> "All files", "Excel files" """
-        if filetype == "Excel files":
-            param = (filetype, "*.xlsx;*.xls")
+        if filepath_dict_key == "Excel files":
+            param = (filepath_dict_key, "*.xlsx;*.xls")
         else:
-            param = (filetype, "*.*")
+            param = (filepath_dict_key, "*.*")
 
         try:
-            self.filepaths = [
-                filepath
-                for filepath in filedialog.askopenfilenames(
-                    title="Select Files", filetypes=(param,)
-                )
-            ]
+            # self.filepaths = [
+            #     filepath
+            #     for filepath in filedialog.askopenfilenames(
+            #         title="Select Files", filetypes=(param,)
+            #     )
+            # ]
+            filepaths = filedialog.askopenfilenames(
+                title="Select Files", filetypes=(param,)
+            )
 
             # entering all file paths in the listbox
-            list_box.delete(0, tk.END)
-            for path in self.filepaths:
+            self.file_path_PR_entry.delete(0, tk.END)
+            for path in filepaths:
                 if "PDM" in path or "Estimating" in path:
                     messagebox.showerror(
                         "Error", "Dude! Files from PDM and Estimating can't be uploaded"
                     )
-                    list_box.delete(0, tk.END)
+                    self.file_path_PR_entry.delete(0, tk.END)
                     return
                 else:
-                    list_box.insert(0, path)
+                    print(filepath_dict_key)
+                    self.files.get(filepath_dict_key).append(path)  # type: ignore
+                    self.file_path_PR_entry.insert(0, path)
 
         except FileNotFoundError as e:
             print(f"Error during file browse: {e}")
@@ -385,28 +414,6 @@ class RfqGen(tk.Tk):
                 "An error occurred during file selection. Please try again.",
             )
 
-    def update_buyer_combobox(self, event=None):
-        """Updates the buyer combobox when a customer is selected"""
-        try:
-            self.buyer_dict = party.get_all_buyers_for_party(self.party_pk)
-            self.buyer_select_box["values"] = list(
-                self.buyer_dict.values()
-            )  # values are sorted from the database
-        except RuntimeError as e:
-            messagebox.showerror(title="Error in database", message=f"{e}")
-            self.buyer_dict = None
-
-    def reset_gui(self):
-        self.customer_select_box.set("")
-        self.buyer_select_box.set("")
-        self.customer_info_text.delete(1.0, tk.END)
-        self.file_path_PR_entry.delete(0, tk.END)
-        self.file_path_PL_entry.delete(0, tk.END)
-        self.file_path_estimating_entry.delete(0, tk.END)
-        self.rfq_number_text.delete(0, tk.END)
-        self.inquiry_date_box.delete(0, tk.END)
-        self.due_date_box.delete(0, tk.END)
-
     # -------------------------------------------------------------------------------------------------------------
 
     def generate_rfq(self, loading_screen, update_rfq_pk=None):
@@ -414,7 +421,7 @@ class RfqGen(tk.Tk):
 
         # TODO: self.cusotmer_select_box.get() should be partypk instead.
         if (
-            not self.customer_select_box.get() or not self.file_path_PR_entry.get(0)
+            not self.party_details or not self.files.get("Excel files")
         ):  # checking if user uploaded the part request excel file and selected the customer or not
             self.loading_screen.destroy()
             messagebox.showerror(
@@ -425,10 +432,9 @@ class RfqGen(tk.Tk):
 
         LOGGER.debug("Extracting excel...")
         info_dict: Dict[str, Dict[str, Any]] = create_dict_from_excel_new(
-            self.file_path_PR_entry.get(0, tk.END)[0]
+            self.files.get("Excel files", [])[0]
         )
         LOGGER.debug("Excel file values:")
-        pprint(info_dict)
 
         if not info_dict:
             self.loading_screen.destroy()
@@ -444,23 +450,18 @@ class RfqGen(tk.Tk):
             f"{current_date.strftime('%m-%d-%Y')} 12:00:00 AM" if current_date else None
         )
 
-        inquiry_date = self.inquiry_date_box.get()
+        inquiry_date = self.inquiry_date_value.cget("text")
         inq_date = f"{inquiry_date} 12:00:00 AM" if inquiry_date else None
 
-        due_date = self.due_date_box.get()
+        due_date = self.due_date_value.cget("text")
         due_date_formated = f"{due_date} 12:00:00 AM" if due_date else None
 
         # we are doing this twice, once when the user makes a selection and second time when presses generate
-        buyer_selection_idx = self.buyer_select_box.current()
-        buyer_fk = (
-            list(self.buyer_dict.keys())[buyer_selection_idx]
-            if buyer_selection_idx and self.buyer_dict
-            else None
-        )
+        buyer_fk = self.party_details.get("buyer_pk", None)
+        # getting the pk of the selected customer
+        party_pk = self.party_details.get("party_pk")
 
-        party_pk = self.party_pk  # getting the pk of the selected customer
-
-        address_dict = party.get_party_address(self.party_pk)
+        address_dict = party.get_party_address(party_pk)
         if update_rfq_pk:
             rfq_pk = update_rfq_pk
         else:  # for new rfqs
@@ -486,20 +487,26 @@ class RfqGen(tk.Tk):
         # dictionary with file path as key and the pk of the document group
         path_dict = {}
         estimation_path_dict = {}
-        user_selected_file_paths = list(
-            self.file_path_PL_entry.get(0, tk.END)
-        )  # parts list file upload
+        # user_selected_file_paths = list(
+        #     self.file_path_PL_entry.get(0, tk.END)
+        # )  # parts list file upload
+        user_selected_file_paths = self.files.get("Parts Requested Files", [])
 
         # TODO: file path pr entry to estimation folder docs
+
+        # estimation_folder_docs = list(
+        #     self.file_path_PR_entry.get(0, tk.END)
+        #     + self.file_path_estimating_entry.get(0, tk.END)
+        # )
         estimation_folder_docs = list(
-            self.file_path_PR_entry.get(0, tk.END)
-            + self.file_path_estimating_entry.get(0, tk.END)
+            self.files.get("Estimation files", []) + self.files.get("Excel files", [])
         )
+        LOGGER.debug(estimation_folder_docs)
         order_by_counter = 1
+        # return
 
         LOGGER.debug("Generating items for Mat, HT and OP for...")
         part_mat_ht_op_dict = generate_item_pks(info_dict)
-        pprint(part_mat_ht_op_dict)
 
         item_pk_dict = {}  # {"PartNumber": ItemPK}
         restricted = False
@@ -525,16 +532,12 @@ class RfqGen(tk.Tk):
 
                 if self.itar_restricted_var.get():  # checking if the user clicked on Restricted box or not and based on that destination path is decided
                     # pass
-                    destination_path = (
-                        rf"y:\PDM\Restricted\{self.customer_select_box.get()}\{key}"
-                    )
-                    estimation_destinatoin_path = rf"y:\Estimating\Restricted\{self.customer_select_box.get()}\{self.rfq_number_text.get()}"
+                    destination_path = rf"y:\PDM\Restricted\{self.party_details.get('party_name')}\{key}"
+                    estimation_destinatoin_path = rf"y:\Estimating\Restricted\{self.party_details.get('party_name')}\{self.rfq_number_text.get()}"
                     restricted = True
                 else:
-                    destination_path = (
-                        rf"y:\PDM\Non-restricted\{self.customer_select_box.get()}\{key}"
-                    )
-                    estimation_destinatoin_path = rf"y:\Estimating\Non-restricted\{self.customer_select_box.get()}\{self.rfq_number_text.get()}"
+                    destination_path = rf"y:\PDM\Non-restricted\{self.party_details.get('party_name')}\{key}"
+                    estimation_destinatoin_path = rf"y:\Estimating\Non-restricted\{self.party_details.get('party_name')}\{self.rfq_number_text.get()}"
 
                 for file in user_selected_file_paths:
                     # folder is get or created and file is copied to this folder
@@ -679,19 +682,19 @@ class RfqGen(tk.Tk):
                     op_finish_pk = mat_ht_fin_pks[2]
                     op_part_number = f"{key} - OP Finish"
                     finish_description = value.get("finish_code", "")
-                    self.create_finish_router(
+                    controller.create_finish_router(
                         finish_description, op_finish_pk, op_part_number
                     )
 
                 # Inserting dimensional and other values to the item table for a part and attaching Document to OP, HT, FIN
                 # if key in info_dict:
-                self.data_base_conn.insert_part_details_in_item(item_pk, key, value)
+                item.insert_part_details_in_item(item_pk, key, value)
                 pk_value = part_mat_ht_op_dict[key]
                 for pk in pk_value[1:]:
                     if pk:
-                        self.data_base_conn.insert_part_details_in_item(pk, key, value)
+                        item.insert_part_details_in_item(pk, key, value)
                 if pk_value[0]:
-                    self.data_base_conn.insert_part_details_in_item(
+                    item.insert_part_details_in_item(
                         pk_value[0], key, value, item_type="Material"
                     )
 
@@ -706,7 +709,7 @@ class RfqGen(tk.Tk):
                     quote_assembly_pk = quote.get_quote_assembly_pk(
                         **{"QuoteFK": fk, "SequenceNumber": 24}
                     )
-                    item_fk = check_and_create_tooling(value.get("description", ""))
+                    item_fk = item.check_and_create_tooling(value.get("description"))
                     bom.create_bom_quote(
                         fk,
                         item_fk,
@@ -717,7 +720,7 @@ class RfqGen(tk.Tk):
                     )
                     order_by_counter += 1
                 elif value.get("hardware_or_supplies", "") == "Tooling":
-                    quote_assembly_pk = self.quote_assembly_table.get(
+                    quote_assembly_pk = quote.get_quote_assembly_pk(
                         "QuoteAssemblyPK", QuoteFK=fk, SequenceNumber=8
                     )
                     item_fk = item.get_or_create_item(
@@ -768,7 +771,9 @@ class RfqGen(tk.Tk):
     # -------------------------------------------------------------------------------------------------------------
 
     # Update: May10
-    def create_finish_router(self, finish_description, item_fin_pk, part_num):
+    def create_finish_router(
+        self, finish_description: str, item_fin_pk: int, part_num: str
+    ):
         "Adds a router for every finish"
         finish_code = finish_description.split("\n")
         finish_pks = []

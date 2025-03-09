@@ -1,7 +1,7 @@
 import re
 from typing import Dict, Any
 from base_logger import getlogger
-from mie_trak_api import request_for_quote, quote
+from mie_trak_api import request_for_quote, quote, item, router
 
 
 LOGGER = getlogger("Controller")
@@ -73,3 +73,53 @@ def create_rfq(
                     parent_quote_asembly=parent_quote_assembly_pk_new,
                 )
                 parent_quote_assembly_pk_dict[part_number] = parent_quote_assembly_pk
+
+
+def create_finish_router(finish_description: str, item_fin_pk: int, part_num: str):
+    "Adds a router for every finish"
+    finish_code = finish_description.split("\n")
+    finish_pks = []
+
+    if finish_code:
+        for code in finish_code:
+            finish_codes_pk = item.get_or_create_item(
+                **{
+                    "PartNumber": code[:100],
+                    "Description": code[
+                        :490
+                    ],  # TODO: Fix this as its crossing the limit, add this to the comments.
+                    "Inventoriable": 0,
+                    "ItemTypeFK": 5,
+                    "CertReqdBySupplier": 1,
+                    "CanNotCreateWorkOrder": 1,
+                    "CanNotInvoice": 1,
+                    "PurchaseAccountFK": 125,
+                    "CogsAccFk": 125,
+                    "CalculationTypeFK": 17,
+                    "Comment": code,
+                }
+            )
+            finish_pks.append(finish_codes_pk)
+
+    router_pk = router.create_router(item_fin_pk, part_num)
+    LOGGER.debug(f"Created Router PK: {router_pk}")
+
+    for idx, pk in enumerate(finish_pks, start=1):
+        router.create_router_work_center(pk, router_pk, idx)
+
+
+def center_window(window, width=1000, height=700):
+    """
+    [TODO:description]
+
+    :param window [TODO:type]: [TODO:description]
+    :param width [TODO:type]: [TODO:description]
+    :param height [TODO:type]: [TODO:description]
+    """
+    screen_width = window.winfo_screenwidth()
+    screen_height = window.winfo_screenheight()
+
+    x = (screen_width // 2) - (width // 2)
+    y = (screen_height // 2) - (height // 2)
+
+    window.geometry(f"{width}x{height}+{x}+{y}")
