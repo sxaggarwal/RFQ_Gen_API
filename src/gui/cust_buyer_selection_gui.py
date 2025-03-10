@@ -4,6 +4,11 @@ from tkinter import messagebox
 from typing import Callable, Dict
 from mie_trak_api import party
 from src.controller import center_window
+from src.gui.utils import gui_error_handler
+from base_logger import getlogger
+
+
+LOGGER = getlogger("Cust Selection")
 
 
 class CustomerSelectionGUI(tk.Toplevel):
@@ -103,14 +108,17 @@ class CustomerSelectionGUI(tk.Toplevel):
         if not selection:
             return
         selected_party_pk = list(self.party_display_data.keys())[selection[0]]
-        print(self.party_display_data[selected_party_pk])
 
-        self.buyers = party.get_all_buyers_for_party(selected_party_pk)
-        self.buyer_display_data = self.buyers
+        try:
+            self.buyers = party.get_all_buyers_for_party(selected_party_pk)
+            self.buyer_display_data = self.buyers
+        except ValueError as e:
+            LOGGER.error(e)
+            self.buyer_display_data = {}
 
         self.buyer_listbox.delete(0, tk.END)
 
-        for _, buyer_name in self.buyers.items():
+        for _, buyer_name in self.buyer_display_data.items():
             self.buyer_listbox.insert(tk.END, buyer_name)
 
     def update_buyer_listbox_search(self, event=None):
@@ -125,6 +133,7 @@ class CustomerSelectionGUI(tk.Toplevel):
                 self.buyer_display_data[buyer_id] = buyer_name
                 self.buyer_listbox.insert(tk.END, buyer_name)
 
+    @gui_error_handler
     def confirm_selection(self):
         """Callback function when the confirm button is clicked."""
         selected_party_idx = self.party_listbox.curselection()

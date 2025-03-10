@@ -51,6 +51,9 @@ def with_db_conn(commit: bool = False):
                 error_msg = f"Database Error in {func.__name__}: {db_err}"
                 LOGGER.error(error_msg)
                 raise RuntimeError(error_msg)
+            except ValueError as val_err:
+                LOGGER.error(val_err)
+                raise ValueError(val_err)
             except Exception as e:
                 error_msg = f"Unexpected Error in {func.__name__}: {e}"
                 LOGGER.error(error_msg)
@@ -81,12 +84,14 @@ def get_table_schema(cursor, table_name: str) -> List[Dict[str, Any]]:
     schema = []
 
     for row in cursor.fetchall():
-        schema.append({
-            "column_name": row.COLUMN_NAME,
-            "data_type": row.DATA_TYPE,
-            "max_length": row.CHARACTER_MAXIMUM_LENGTH,
-            "is_nullable": row.IS_NULLABLE == 'YES'
-        })
+        schema.append(
+            {
+                "column_name": row.COLUMN_NAME,
+                "data_type": row.DATA_TYPE,
+                "max_length": row.CHARACTER_MAXIMUM_LENGTH,
+                "is_nullable": row.IS_NULLABLE == "YES",
+            }
+        )
 
     return schema
 
@@ -105,7 +110,7 @@ SQL_TO_PYDANTIC = {
     "nvarchar": str,
     "char": str,
     "nchar": str,
-    "text": str
+    "text": str,
 }
 
 
@@ -138,9 +143,9 @@ def create_pydantic_model(table_name: str):
         if is_nullable:
             pydantic_type = Optional[pydantic_type]
 
-
-        annotations[col_name] = Annotated[pydantic_type, Field(None if is_nullable else ..., title=col_name)]
+        annotations[col_name] = Annotated[
+            pydantic_type, Field(None if is_nullable else ..., title=col_name)
+        ]
 
     namespace = {"__annotations__": annotations}
     return type(f"{table_name.capitalize()}Model", (BaseModel,), namespace)
-

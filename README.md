@@ -20,10 +20,11 @@ Enhanced Data Validation: Add more robust validation checks to ensure data accur
 
 
 # TODO: 
-[ ] change iterator in RFQ gen to be a dict.
-    [ ] change RFQ gen to take in new iterator format
-[ ] GUI improvements
-    [ ] fix reset function
-    [ ] fix file upload system
-    [ ] fix party/buyer selection
-[ ] Create new function for document attach
+[ ] Add GUI error handler decorator to RFQ Gen.
+[ ] Logging file config.
+[ ] Logging info in RFQ gen.
+[ ] Buyer needs to be further in the center.
+[ ] Upload button and ITAR restricted need to be aligned in the center.
+[ ] remove add/update item.
+[ ] move RFQ gen to controller.
+[ ] move application into folders.

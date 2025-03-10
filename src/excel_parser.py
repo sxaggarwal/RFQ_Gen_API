@@ -129,6 +129,13 @@ def create_dict_from_excel_new(filepath: str) -> Dict[str, Dict[str, Any]]:
     if errors:
         raise ValueError(f"Data validation failed:\n" + "\n".join(errors))
 
+    # check for a main part number.
+    all_assy_for_data = [value.get("assy_for") for _, value in my_dict.items()]
+    if not "" in all_assy_for_data:
+        raise ValueError(
+            f"Main Part number missing from excel sheet. Check Assy for column."
+        )
+
     return my_dict
 
 

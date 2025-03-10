@@ -20,9 +20,6 @@ def get_or_create_item(cursor: pyodbc.Cursor, **item_data):
     :raises ValueError: [TODO:description]
     """
 
-    # if not item_data.get("PartNumber", None):
-    #     raise ValueError("kwargs must contain a part number")
-
     part_number = item_data.get("PartNumber", "")
     cursor.execute("SELECT ItemPK FROM Item WHERE PartNumber = ?", (part_number,))
     result = cursor.fetchone()
@@ -207,9 +204,8 @@ def check_and_create_tooling(cursor: pyodbc.Cursor, user_des: str):
 
     insert_query = """
         INSERT INTO Item 
-        (PartNumber, Description, CalculationTypeFK, PurchaseAccountFK, CogsAccFK, 
-        MPSItem, ForecastOnMRP, MPSOnMRP, ServiceItem, ShipLoose, BulkShip, 
-        CertReqdBySupplier, ItemTypeFK)
+        (PartNumber, Description, CalculationTypeFK, PurchaseGeneralLedgerAccountFK, SalesCogsAccountFK, 
+        MPSItem, ForecastOnMRP, MPSOnMRP, ServiceItem, ShipLoose, BulkShip, CertificationsRequiredBySupplier, ItemTypeFK)
         VALUES (?, ?, 12, 130, 130, 0, 0, 0, 0, 0, 0, 1, 3)
     """
     cursor.execute(insert_query, (new_part_number, user_des))
