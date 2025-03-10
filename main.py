@@ -43,6 +43,7 @@ class LoadingScreen(tk.Toplevel):
             maximum=max_progress,
         )
         self.progressbar.pack(pady=10)
+        controller.center_window(self, height=100, width=300)
 
     def set_progress(self, value):
         self.progressbar["value"] = value
@@ -60,11 +61,8 @@ class RfqGen(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("RFQGen")
-        self.geometry("950x500")
+        controller.center_window(self, height=650, width=750)
 
-        controller.center_window(self)
-
-        # self.data_base_conn = MieTrak()
         self.files = {
             "Excel files": [],
             "Estimation files": [],
@@ -76,7 +74,6 @@ class RfqGen(tk.Tk):
     def make_combobox(self):
         """Updated Main Window GUI layout with Frames for better structure and flexibility using grid only."""
 
-        # Configure main frame columns for responsiveness.
         for i in range(6):
             self.grid_columnconfigure(i, weight=1)
 
@@ -91,6 +88,9 @@ class RfqGen(tk.Tk):
             heading_frame, text="RFQ Gen", font=("Helvetica", 16, "bold")
         )
         self.heading_label.grid(row=0, column=0, sticky="ew")
+        # Added separator line after the heading
+        heading_separator = ttk.Separator(heading_frame, orient="horizontal")
+        heading_separator.grid(row=1, column=0, sticky="ew", pady=(5, 0))
 
         # --- Row 1: Customer, Buyer, and RFQ# in one frame ---
         info_frame = tk.Frame(self)
@@ -105,6 +105,7 @@ class RfqGen(tk.Tk):
             anchor="w",
             justify="left",
             wraplength=250,
+            font=("Consolas", 12, "bold"),
         )
         self.customer_info_label.grid(row=0, column=0, padx=5, pady=2, sticky="ew")
 
@@ -115,6 +116,7 @@ class RfqGen(tk.Tk):
             anchor="w",
             justify="left",
             wraplength=250,
+            font=("Consolas", 12, "bold"),
         )
         self.buyer_info_label.grid(row=0, column=1, padx=(20, 5), pady=2, sticky="ew")
 
@@ -124,7 +126,9 @@ class RfqGen(tk.Tk):
         self.add_button.grid(row=0, column=2, padx=5, pady=2, sticky="e")
 
         # Row 1: RFQ Number label and entry with extra top padding.
-        self.rfq_number_label = tk.Label(info_frame, text="Customer RFQ#:")
+        self.rfq_number_label = tk.Label(
+            info_frame, text="Customer RFQ#:", font=("Consolas", 12, "bold")
+        )
         self.rfq_number_label.grid(row=1, column=0, padx=5, pady=(10, 2), sticky="w")
 
         self.rfq_number_text = tk.Entry(info_frame, width=50)
@@ -168,7 +172,7 @@ class RfqGen(tk.Tk):
             file_type_options_frame,
             values=["Excel files", "Estimation files", "Parts Requested Files"],
             state="readonly",
-            width=15,
+            width=25,  # increased width
         )
         self.file_type_combo.set("Excel files")
         # Place the combobox in the center column.
@@ -185,10 +189,12 @@ class RfqGen(tk.Tk):
         file_display_upload_frame.grid_rowconfigure(0, weight=1)
 
         self.file_path_PR_entry = tk.Listbox(
-            file_display_upload_frame, height=5, width=80
+            file_display_upload_frame,
+            height=5,
+            width=80,  # decreased width
         )
         self.file_path_PR_entry.grid(
-            row=0, column=0, columnspan=2, padx=20, pady=5, sticky="nsew"
+            row=0, column=0, columnspan=2, padx=20, pady=5, sticky="ns"
         )
 
         # In the bottom row, place the ITAR checkbox on the left and the Upload button on the right.
@@ -229,7 +235,7 @@ class RfqGen(tk.Tk):
         self.inquiry_date_value.grid(row=0, column=1, padx=5, pady=2, sticky="nsew")
 
         self.inquiry_cal_button = tk.Button(
-            date_frame, text="Cal", command=self.open_calendar
+            date_frame, text="Cal", command=lambda: self.open_calendar("inquiry")
         )
         self.inquiry_cal_button.grid(row=0, column=2, padx=5, pady=2)
 
@@ -243,7 +249,7 @@ class RfqGen(tk.Tk):
         self.due_date_value.grid(row=0, column=4, padx=5, pady=2, sticky="nsew")
 
         self.due_cal_button = tk.Button(
-            date_frame, text="Cal", command=self.open_due_calendar
+            date_frame, text="Cal", command=lambda: self.open_calendar("inquiry")
         )
         self.due_cal_button.grid(row=0, column=5, padx=5, pady=2)
 
@@ -309,45 +315,34 @@ class RfqGen(tk.Tk):
         for file in self.files.get(selected_file_type):  # type: ignore
             self.file_path_PR_entry.insert(tk.END, file)
 
-    def open_calendar(self):
-        """Opens the Calendar and selects the date on double click"""
+    def open_calendar(self, date_type):
+        """Opens a calendar and assigns the selected date to the correct label."""
         top = tk.Toplevel(self)
         top.grab_set()
-        self.inq_cal = Calendar(top, selectmode="day", date_pattern="mm/dd/y")
-        self.inq_cal.pack(padx=20, pady=20)
+        calendar = Calendar(top, selectmode="day", date_pattern="mm/dd/y")
+        calendar.pack(padx=20, pady=20)
+        controller.center_window(top, height=300, width=300)
 
-        top.bind("<Double-1>", self.get_selected_inquiry_date)
+        top.bind(
+            "<Double-1>", lambda event: self.get_selected_date(calendar, date_type, top)
+        )
 
         btn = tk.Button(
-            top, text="Get Selected Date", command=self.get_selected_inquiry_date
+            top,
+            text="Get Selected Date",
+            command=lambda: self.get_selected_date(calendar, date_type, top),
         )
         btn.pack(pady=10)
 
-    def get_selected_inquiry_date(self, event=None):
-        """gets the selected inquiry date"""
-        selected_date = self.inq_cal.get_date()
-        self.inquiry_date_value.config(text=selected_date)
-        self.inq_cal.master.destroy()
+    def get_selected_date(self, calendar, date_type, top):
+        """Gets the selected date and updates the corresponding label."""
+        selected_date = calendar.get_date()
+        if date_type == "inquiry":
+            self.inquiry_date_value.config(text=selected_date)
+        elif date_type == "due":
+            self.due_date_value.config(text=selected_date)
 
-    def open_due_calendar(self):
-        """Due date calendar widget"""
-        top = tk.Toplevel(self)
-        top.grab_set()
-        self.due_cal = Calendar(top, selectmode="day", date_pattern="mm/dd/y")
-        self.due_cal.pack(padx=20, pady=20)
-
-        top.bind("<Double-1>", self.get_selected_due_date)
-
-        btn = tk.Button(
-            top, text="Get Selected Date", command=self.get_selected_due_date
-        )
-        btn.pack(pady=10)
-
-    def get_selected_due_date(self, event=None):
-        """gets the selected due date"""
-        selected_date = self.due_cal.get_date()
-        self.due_date_value.config(text=selected_date)
-        self.due_cal.master.destroy()
+        top.destroy()
 
     def generate_rfq_with_loading_screen(self):
         """Applying thread so that the screen doesn't freeze and the generate RFQ function is run on background"""
@@ -358,8 +353,13 @@ class RfqGen(tk.Tk):
         ).start()  # Start RFQ generation in a separate thread
 
     def add_buyer_customer_callback(self, party_details_dict: Dict[str, Any]):
+        """
+        [TODO:description]
+
+        :param party_details_dict: [TODO:description]
+        """
         self.party_details = party_details_dict
-        # update GUI
+
         customer_update_text = f"Customer Name: {self.party_details.get('party_name')}\nCustomer Email: {self.party_details.get('party_email')}"
         buyer_update_text = f"Buyer Name: {self.party_details.get('buyer_name')}\nBuyer Email: {self.party_details.get('buyer_email')}"
         self.customer_info_label.config(text=customer_update_text)
@@ -383,17 +383,10 @@ class RfqGen(tk.Tk):
             param = (filepath_dict_key, "*.*")
 
         try:
-            # self.filepaths = [
-            #     filepath
-            #     for filepath in filedialog.askopenfilenames(
-            #         title="Select Files", filetypes=(param,)
-            #     )
-            # ]
             filepaths = filedialog.askopenfilenames(
                 title="Select Files", filetypes=(param,)
             )
 
-            # entering all file paths in the listbox
             self.file_path_PR_entry.delete(0, tk.END)
             for path in filepaths:
                 if "PDM" in path or "Estimating" in path:
@@ -808,6 +801,7 @@ class RfqGen(tk.Tk):
     def ends_with_suffix(self, s):
         return re.search(r"_____\d+$", s) is not None
 
+    # UNUSED Legacy function
     def create_rfq(
         self,
         quote_pk_dict,
@@ -1034,11 +1028,11 @@ class RfqGen(tk.Tk):
     def update_rfq(self):
         """Updates RFQ by deleting old quotes and creating new quotes for a RFQ"""
         if (
-            self.update_rfq_number_text.get()
-            and self.customer_select_box.get()
-            and self.file_path_PR_entry.get(0)
+            self.rfq_number_text.get()
+            and (self.party_details and self.party_details.get("party_pk", None))
+            and self.files.get("Excel files", [])
         ):
-            rfq_pk = self.update_rfq_number_text.get()
+            rfq_pk = self.rfq_number_text.get()
             request_for_quote.reset_rfq(rfq_pk)
             loading_screen = LoadingScreen(self, max_progress=100)
             Thread(
@@ -1046,7 +1040,6 @@ class RfqGen(tk.Tk):
                 args=(loading_screen,),
                 kwargs={"update_rfq_pk": rfq_pk},
             ).start()
-            # self.generate_rfq(loading_screen, update_rfq_pk=rfq_pk)
         else:
             messagebox.showerror("ERROR", "Please fill all required fields")
 
@@ -1054,6 +1047,3 @@ class RfqGen(tk.Tk):
 if __name__ == "__main__":
     r = RfqGen()
     r.mainloop()
-    # filepath = r"C:\Users\saggarwal\Downloads\Test RFQ Big.xlsx"
-    # info_dict = create_dict_from_excel(filepath)
-    # r.create_rfq("test", "test1", "test2", info_dict)
