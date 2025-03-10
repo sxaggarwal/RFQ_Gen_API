@@ -1,7 +1,9 @@
 import re
+import os
 from typing import Dict, Any
 from base_logger import getlogger
 from mie_trak_api import request_for_quote, quote, item, router
+from src.gui.utils import transfer_file_to_folder
 
 
 LOGGER = getlogger("Controller")
@@ -139,18 +141,41 @@ def create_finish_router(finish_description: str, item_fin_pk: int, part_num: st
         router.create_router_work_center(pk, router_pk, idx)
 
 
-def center_window(window, width=1000, height=700):
+def transfer_and_categorize_files(file_list, destination_path):
     """
-    [TODO:description]
+    Transfers files to the specified destination and categorizes them based on file name patterns.
 
-    :param window [TODO:type]: [TODO:description]
-    :param width [TODO:type]: [TODO:description]
-    :param height [TODO:type]: [TODO:description]
+    :param file_list: List of file paths to transfer.
+    :type file_list: list
+    :param destination_path: Destination directory where files will be copied.
+    :type destination_path: str
+    :return: Dictionary mapping transferred file paths to their document group PKs (or None if uncategorized).
+    :rtype: dict
     """
-    screen_width = window.winfo_screenwidth()
-    screen_height = window.winfo_screenheight()
+    result_dict = {}
 
-    x = (screen_width // 2) - (width // 2)
-    y = (screen_height // 2) - (height // 2)
+    for file in file_list:
+        # Copy file to destination folder (folder is created if not exists)
+        file_path_to_add_to_rfq = transfer_file_to_folder(destination_path, file)
+        path = file_path_to_add_to_rfq.lower()
 
-    window.geometry(f"{width}x{height}+{x}+{y}")
+        # Categorize based on file name pattern
+        if (
+            "_pl_" in path
+            or "spdl" in path
+            or "psdl" in path
+            or "pl" in os.path.basename(path)
+        ):
+            result_dict[file_path_to_add_to_rfq] = 26
+        elif "dwg" in path or "drw" in path:
+            result_dict[file_path_to_add_to_rfq] = 27
+        elif "step" in path or "stp" in path:
+            result_dict[file_path_to_add_to_rfq] = 30
+        elif "zsp" in path or "speco" in path:
+            result_dict[file_path_to_add_to_rfq] = 33
+        elif ".cat" in path:
+            result_dict[file_path_to_add_to_rfq] = 16
+        else:
+            result_dict[file_path_to_add_to_rfq] = None  # Unmatched pattern
+
+    return result_dict

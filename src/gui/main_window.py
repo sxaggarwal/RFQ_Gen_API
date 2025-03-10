@@ -2,7 +2,7 @@ import os
 import datetime
 import re
 import tkinter as tk
-from tkinter import ttk, filedialog, messagebox
+from tkinter import ttk, filedialog, messagebox, simpledialog
 from tkcalendar import Calendar
 from threading import Thread
 from pprint import pprint
@@ -36,7 +36,6 @@ class LoadingScreen(tk.Toplevel):
             maximum=max_progress,
         )
         self.progressbar.pack(pady=10)
-        controller.center_window(self, height=100, width=300)
 
     def set_progress(self, value):
         self.progressbar["value"] = value
@@ -54,7 +53,7 @@ class RfqGen(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("RFQGen")
-        controller.center_window(self, height=650, width=750)
+        center_window(self, height=650, width=750)
 
         self.files = {
             "Excel files": [],
@@ -321,7 +320,7 @@ class RfqGen(tk.Tk):
         top.grab_set()
         calendar = Calendar(top, selectmode="day", date_pattern="mm/dd/y")
         calendar.pack(padx=20, pady=20)
-        controller.center_window(top, height=300, width=300)
+        center_window(top, height=300, width=300)
 
         top.bind(
             "<Double-1>", lambda event: self.get_selected_date(calendar, date_type, top)
@@ -349,16 +348,6 @@ class RfqGen(tk.Tk):
             self.due_date_value.config(text=selected_date)
 
         top.destroy()
-
-    def generate_rfq_with_loading_screen(self):
-        """
-        [TODO:description]
-        """
-        self.loading_screen = LoadingScreen(self, max_progress=100)
-        center_window(self.loading_screen, width=400, height=75)
-        Thread(
-            target=self.generate_rfq, args=(self.loading_screen,)
-        ).start()  # Start RFQ generation in a separate thread
 
     def add_buyer_customer_callback(self, party_details_dict: Dict[str, Any]):
         """
@@ -430,6 +419,16 @@ class RfqGen(tk.Tk):
 
     # -------------------------------------------------------------------------------------------------------------
 
+    def generate_rfq_with_loading_screen(self):
+        """
+        [TODO:description]
+        """
+        self.loading_screen = LoadingScreen(self, max_progress=100)
+        center_window(self.loading_screen, width=400, height=75)
+        Thread(
+            target=self.generate_rfq, args=(self.loading_screen,)
+        ).start()  # Start RFQ generation in a separate thread
+
     @gui_error_handler
     def generate_rfq(self, loading_screen, update_rfq_pk=None):
         """Main function for generating RFQ, adding line items and creating a quote"""
@@ -498,11 +497,7 @@ class RfqGen(tk.Tk):
         LOGGER.info(f"Created RFQ with pk: {rfq_pk}.")
 
         # dictionary with file path as key and the pk of the document group
-        path_dict = {}
-        estimation_path_dict = {}
         user_selected_file_paths = self.files.get("Parts Requested Files", [])
-
-        # TODO: file path pr entry to estimation folder docs
         estimation_folder_docs = list(
             self.files.get("Estimation files", []) + self.files.get("Excel files", [])
         )
@@ -511,11 +506,11 @@ class RfqGen(tk.Tk):
         LOGGER.info("Generating FIN, HT, MAT items for parts...")
         part_mat_ht_op_dict = generate_item_pks(info_dict)
 
+        self.loading_screen.set_progress(20)
+
         item_pk_dict = {}  # {"PartNumber": ItemPK}
         restricted = False
         quote_pk_dict = {}
-        loading_screen.set_progress(10)
-        ct = 20
         LOGGER.info("Starting loop to insert all parts...")
         for new_key, value in info_dict.items():
             key = (
@@ -539,55 +534,12 @@ class RfqGen(tk.Tk):
                     destination_path = rf"y:\PDM\Non-restricted\{self.party_details.get('party_name')}\{key}"
                     estimation_destinatoin_path = rf"y:\Estimating\Non-restricted\{self.party_details.get('party_name')}\{self.rfq_number_text.get()}"
 
-                for file in user_selected_file_paths:
-                    # folder is get or created and file is copied to this folder
-
-                    # TODO: here instead of user_selected_file_path it should be estimating
-                    file_path_to_add_to_rfq = transfer_file_to_folder(
-                        destination_path, file
-                    )
-                    path = file_path_to_add_to_rfq.lower()
-                    if (
-                        "_pl_" in path
-                        or "spdl" in path
-                        or "psdl" in path
-                        or "pl" in os.path.basename(path)
-                    ):
-                        path_dict[file_path_to_add_to_rfq] = 26
-                    elif "dwg" in path or "drw" in path:
-                        path_dict[file_path_to_add_to_rfq] = 27
-                    elif "step" in path or "stp" in path:
-                        path_dict[file_path_to_add_to_rfq] = 30
-                    elif "zsp" in path or "speco" in path:
-                        path_dict[file_path_to_add_to_rfq] = 33
-                    elif ".cat" in path:
-                        path_dict[file_path_to_add_to_rfq] = 16
-                    else:
-                        path_dict[file_path_to_add_to_rfq] = None
-
-                for file_p in estimation_folder_docs:
-                    # TODO: Create different dict for estimation folder docs.
-                    file_path_to_add_to_rfq = transfer_file_to_folder(
-                        estimation_destinatoin_path, file_p
-                    )
-                    path = file_path_to_add_to_rfq.lower()
-                    if (
-                        "_pl_" in path
-                        or "spdl" in path
-                        or "psdl" in path
-                        or "pl" in os.path.basename(path)
-                    ):
-                        estimation_path_dict[file_path_to_add_to_rfq] = 26
-                    elif "dwg" in path or "drw" in path:
-                        estimation_path_dict[file_path_to_add_to_rfq] = 27
-                    elif "step" in path or "stp" in path:
-                        estimation_path_dict[file_path_to_add_to_rfq] = 30
-                    elif "zsp" in path or "speco" in path:
-                        estimation_path_dict[file_path_to_add_to_rfq] = 33
-                    elif ".cat" in path:
-                        estimation_path_dict[file_path_to_add_to_rfq] = 16
-                    else:
-                        estimation_path_dict[file_path_to_add_to_rfq] = None
+                path_dict = controller.transfer_and_categorize_files(
+                    user_selected_file_paths, destination_path
+                )
+                estimation_path_dict = controller.transfer_and_categorize_files(
+                    estimation_folder_docs, estimation_destinatoin_path
+                )
 
                 # Uploading documents to the RFQ with a counter so that the same document is not uploaded more than once
                 # UPDATE: Counter removed: function checks if the file is inserted or not.
@@ -697,9 +649,7 @@ class RfqGen(tk.Tk):
 
             else:
                 # if hardware or tooling then adding it to the BOM of its Assembly part accordingly
-                part_num = value.get("assy_for", "")
-
-                # TODO: throw error if parent now found??
+                part_num = value.get("assy_for")
 
                 fk = quote_pk_dict.get(part_num)
                 if value.get("hardware_or_supplies", "") == "Hardware":
@@ -746,14 +696,14 @@ class RfqGen(tk.Tk):
                         QuantityRequired=value.get("quantity_required", 1.00),
                     )
                     order_by_counter += 1
-            loading_screen.set_progress(ct)
-            if ct < 90:
-                ct += 10
 
-        # TODO: throw error if no RFQ PK?
+        self.loading_screen.set_progress(40)
+
         controller.create_rfq(
             quote_pk_dict, item_pk_dict, rfq_pk, info_dict
         )  # checking if the Assy or Detail and creating the line item and adding quotes of assembly to the BOM of Assy Line Quotes
+
+        self.loading_screen.set_progress(60)
 
         for value in quote_pk_dict.values():
             quote.create_quote_assembly_formula_variable(value)
@@ -801,6 +751,28 @@ class RfqGen(tk.Tk):
 
         for idx, pk in enumerate(finish_pks, start=1):
             router.create_router_work_center(pk, router_pk, idx)
+
+    def update_rfq(self):
+        """Updates RFQ by deleting old quotes and creating new quotes for a RFQ"""
+
+        rfq_pk = simpledialog.askstring(
+            title="Enter RFQ #", prompt="Enter the RFQ# you would like to update"
+        )
+
+        try:
+            request_for_quote.reset_rfq(rfq_pk)
+        except Exception as e:
+            messagebox.showerror(
+                title="RFQ could not reset",
+                message=f"RFQ {rfq_pk} was not reset due to an error:\n\n{e}",
+            )
+
+        loading_screen = LoadingScreen(self, max_progress=100)
+        Thread(
+            target=self.generate_rfq,
+            args=(loading_screen,),
+            kwargs={"update_rfq_pk": rfq_pk},
+        ).start()
 
     def ends_with_suffix(self, s):
         return re.search(r"_____\d+$", s) is not None
@@ -1028,21 +1000,3 @@ class RfqGen(tk.Tk):
     #     else:
     #         messagebox.showerror("ERROR", "Upload Parts to be added File")
     #         self.reset_gui()
-
-    def update_rfq(self):
-        """Updates RFQ by deleting old quotes and creating new quotes for a RFQ"""
-        if (
-            self.rfq_number_text.get()
-            and (self.party_details and self.party_details.get("party_pk", None))
-            and self.files.get("Excel files", [])
-        ):
-            rfq_pk = self.rfq_number_text.get()
-            request_for_quote.reset_rfq(rfq_pk)
-            loading_screen = LoadingScreen(self, max_progress=100)
-            Thread(
-                target=self.generate_rfq,
-                args=(loading_screen,),
-                kwargs={"update_rfq_pk": rfq_pk},
-            ).start()
-        else:
-            messagebox.showerror("ERROR", "Please fill all required fields")
