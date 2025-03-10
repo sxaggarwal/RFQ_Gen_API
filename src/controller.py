@@ -15,9 +15,31 @@ def create_rfq(
     parent_quote_fk=None,
     i=1,
 ):
-    """checks if its Assy or Detail and accordingly creates the line item and adds quotes of assembly to the BOM of Assy Line Quotes"""
+    """
+    Creates RFQ line items and quote assemblies based on the provided parts and associated data.
+    This function analyzes the given parts dictionary (info_dict) to create line items for RFQ,
+    handle assemblies, and link sub-assemblies or child parts appropriately.
+
+    :param quote_pk_dict: Dictionary mapping part numbers to their corresponding Quote PKs.
+    :type quote_pk_dict: dict
+    :param item_pk_dict: Dictionary mapping part numbers to their corresponding Item PKs.
+    :type item_pk_dict: dict
+    :param rfq_pk: The primary key of the RFQ where line items are being added.
+    :type rfq_pk: int
+    :param info_dict: Dictionary containing part numbers as keys and associated data as values.
+    :type info_dict: Dict[str, Dict[str, Any]]
+    :param parent_quote_fk: Optional parent Quote FK for nested assemblies.
+    :type parent_quote_fk: int, optional
+    :param i: Starting index for RFQ line items, defaults to 1.
+    :type i: int, optional
+    :raises ValueError: If necessary main part or quote data is missing for assembly creation.
+    :raises KeyError: If required parent assembly information is not found when expected.
+    """
+
     main_part_number = None
     main_quote_pk = None
+
+    LOGGER.info("Starting RFQ line item and assembly creation.")
 
     parent_quote_assembly_pk_dict = {}
     for new_key, value in info_dict.items():
@@ -32,21 +54,25 @@ def create_rfq(
         item_pk = item_pk_dict.get(part_number)
 
         if not assy_for:
-            rfq_line_pk = request_for_quote.create_rfq_line_item_with_qty(
+            LOGGER.info(f"Creating RFQ line item for part: {part_number}")
+            request_for_quote.create_rfq_line_item_with_qty(
                 item_pk,
                 rfq_pk,
                 i,
                 quote_pk,
                 quantity=value.get("quantity_required"),
             )
-            LOGGER.debug(f"{rfq_line_pk}")
             i += 1
             main_quote_pk = quote_pk
             main_part_number = part_number
+            LOGGER.info(
+                f"Line item created for part {part_number}, linked to QuotePK {quote_pk}"
+            )
 
         elif assy_for and not value.get("hardware_or_supplies"):
-            LOGGER.debug("executing hardware or supplies...")
-
+            LOGGER.info(
+                f"Handling assembly for part: {part_number}, assembly for: {assy_for}"
+            )
             if not main_part_number or not main_quote_pk:
                 raise ValueError("Data from excel sheet is not proper bruh.")
 
@@ -56,9 +82,11 @@ def create_rfq(
                     quote_pk, quote_fk, value.get("quantity_required", "")
                 )
                 parent_quote_assembly_pk_dict[part_number] = parent_quote_assembly_pk
+                LOGGER.info(
+                    f"Assembly quote created for part {part_number}, linked to main QuotePK {quote_fk}"
+                )
 
             else:
-                LOGGER.debug("executing else in create RFQ.")
                 parent_quote_fk = quote_pk_dict[assy_for]
                 if assy_for not in parent_quote_assembly_pk_dict:
                     raise KeyError(
@@ -73,6 +101,9 @@ def create_rfq(
                     parent_quote_asembly=parent_quote_assembly_pk_new,
                 )
                 parent_quote_assembly_pk_dict[part_number] = parent_quote_assembly_pk
+                LOGGER.info(
+                    f"Sub-assembly quote created for part {part_number}, parent assembly: {assy_for}"
+                )
 
 
 def create_finish_router(finish_description: str, item_fin_pk: int, part_num: str):

@@ -136,6 +136,8 @@ def create_dict_from_excel_new(filepath: str) -> Dict[str, Dict[str, Any]]:
             f"Main Part number missing from excel sheet. Check Assy for column."
         )
 
+    LOGGER.info("Excel File extracted successfully.")
+
     return my_dict
 
 

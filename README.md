@@ -18,13 +18,14 @@ Automated Excel Filling: Implement a feature to scan and extract data from uploa
 Enhanced Data Validation: Add more robust validation checks to ensure data accuracy before transferring to the database.
 
 
-
 # TODO: 
-[ ] Add GUI error handler decorator to RFQ Gen.
-[ ] Logging file config.
-[ ] Logging info in RFQ gen.
-[ ] Buyer needs to be further in the center.
-[ ] Upload button and ITAR restricted need to be aligned in the center.
-[ ] remove add/update item.
+[x] Add GUI error handler decorator to RFQ Gen.
+[x] Logging file config.
+[x] Logging info in RFQ gen.
+[x] Buyer needs to be further in the center.
+[x] Upload button and ITAR restricted need to be aligned in the center.
+[x] remove add/update item.
 [ ] move RFQ gen to controller.
-[ ] move application into folders.
+[x] move application into folders.
+[x] center loading screen
+[ ] Make loading as per the process
