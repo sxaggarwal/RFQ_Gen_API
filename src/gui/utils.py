@@ -58,7 +58,13 @@ def center_window(window, width=1000, height=700):
 
 
 def transfer_file_to_folder(folder_path: str, file_path: str) -> str:
-    """Copies file from one path to another path"""
+    """
+    [TODO:description]
+
+    :param folder_path: [TODO:description]
+    :param file_path: [TODO:description]
+    :return: [TODO:description]
+    """
 
     os.makedirs(folder_path, exist_ok=True)
 

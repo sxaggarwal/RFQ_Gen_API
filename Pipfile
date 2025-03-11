@@ -11,6 +11,7 @@ openpyxl = "*"
 loguru = "*"
 pydantic = "*"
 ruff = "*"
+pyinstaller = "*"
 
 [dev-packages]
 

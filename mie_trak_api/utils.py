@@ -12,7 +12,7 @@ _DSN_SANDBOX = (
 )
 _DSN_LIVE = "DRIVER={SQL Server};SERVER=ETZ-SQL;DATABASE=ETEZAZIMIETrakLive;Trusted_Connection=yes"
 
-DSN = _DSN_SANDBOX
+DSN = _DSN_LIVE
 
 
 def with_db_conn(commit: bool = False):

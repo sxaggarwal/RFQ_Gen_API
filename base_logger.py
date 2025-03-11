@@ -1,12 +1,12 @@
 import sys
 import loguru
+import os
 
 
 def getlogger(name: str = "DefaultName", level="DEBUG") -> loguru.logger:  # type: ignore
     """
     Initialize and return a logger instance with the specified name and level.
     """
-
     logobj = loguru.logger.bind(name=name)
 
     logobj.remove()
@@ -19,17 +19,18 @@ def getlogger(name: str = "DefaultName", level="DEBUG") -> loguru.logger:  # typ
         "<level>{message}</level>"
     )
 
-    logobj.add(
-        sys.stderr,
-        level=level,
-        format=logger_format,
-        colorize=True,
-        serialize=False,
-    )
+    if sys.stderr:
+        logobj.add(
+            sys.stderr,
+            level=level,
+            format=logger_format,
+            colorize=True,
+            serialize=False,
+        )
 
     # NOTE: to get logs into a file for prod.
     logobj.add(
-        "logs/rfq_gen.log",  # Specify your desired log file path
+        r"Z:\dist\logs\RFQ_GEN.log",  # Specify your desired log file path
         level=level,
         format=logger_format,
         colorize=False,  # No color in file logs
