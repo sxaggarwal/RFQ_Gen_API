@@ -8,7 +8,7 @@ from threading import Thread
 from pprint import pprint
 from typing import Dict, Any
 from src import controller
-from src.gui.utils import center_window, gui_error_handler, transfer_file_to_folder
+from src.gui.utils import center_window, gui_error_handler
 from mie_trak_api import bom, item, party, request_for_quote, quote, router
 from base_logger import getlogger
 from src.excel_parser import create_dict_from_excel_new, generate_item_pks
@@ -59,6 +59,7 @@ class RfqGen(tk.Tk):
             "Excel files": [],
             "Estimation files": [],
             "Parts Requested Files": [],
+            "All Files": [],
         }
         self.party_details = None
         self.make_combobox()
@@ -170,7 +171,12 @@ class RfqGen(tk.Tk):
 
         self.file_type_combo = ttk.Combobox(
             file_type_options_frame,
-            values=["Excel files", "Estimation files", "Parts Requested Files"],
+            values=[
+                "Excel files",
+                "Estimation files",
+                "Parts Requested Files",
+                "All Files",
+            ],
             state="readonly",
             width=25,  # increased width
         )
@@ -295,6 +301,7 @@ class RfqGen(tk.Tk):
             "Excel files": [],
             "Estimation files": [],
             "Parts Requested Files": [],
+            "All Files": [],
         }
         self.update_file_display(None)
 
@@ -307,6 +314,17 @@ class RfqGen(tk.Tk):
         selected_file_type = self.file_type_combo.get()
         self.file_path_PR_entry.delete(0, tk.END)
 
+        if selected_file_type == "All Files":
+            self.files["All Files"].clear()
+            self.files["All Files"] = sum(  # add all files.
+                (
+                    file_list
+                    for key, file_list in self.files.items()
+                    if key != "All Files"
+                ),
+                [],
+            )
+
         for file in self.files.get(selected_file_type):  # type: ignore
             self.file_path_PR_entry.insert(tk.END, file)
 
@@ -317,10 +335,10 @@ class RfqGen(tk.Tk):
         :param date_type [TODO:type]: [TODO:description]
         """
         top = tk.Toplevel(self)
+        center_window(top, height=300, width=300)
         top.grab_set()
         calendar = Calendar(top, selectmode="day", date_pattern="mm/dd/y")
         calendar.pack(padx=20, pady=20)
-        center_window(top, height=300, width=300)
 
         top.bind(
             "<Double-1>", lambda event: self.get_selected_date(calendar, date_type, top)
@@ -379,6 +397,13 @@ class RfqGen(tk.Tk):
                                  The accepted file types are dynamically adjusted based on this key.
         :type filepath_dict_key: str
         """
+        if filepath_dict_key == "All Files":
+            messagebox.showerror(
+                title="Not Allowed",
+                message="Uploading is not allowed in the All Files section.",
+            )
+            return
+
         if filepath_dict_key == "Excel files":
             param = (filepath_dict_key, "*.xlsx;*.xls")
         else:
@@ -717,43 +742,10 @@ class RfqGen(tk.Tk):
 
     # -------------------------------------------------------------------------------------------------------------
 
-    # Update: May10
-    def create_finish_router(
-        self, finish_description: str, item_fin_pk: int, part_num: str
-    ):
-        "Adds a router for every finish"
-        finish_code = finish_description.split("\n")
-        finish_pks = []
-
-        if finish_code:
-            for code in finish_code:
-                finish_codes_pk = item.get_or_create_item(
-                    **{
-                        "PartNumber": code[:100],
-                        "Description": code[
-                            :490
-                        ],  # TODO: Fix this as its crossing the limit, add this to the comments.
-                        "Inventoriable": 0,
-                        "ItemTypeFK": 5,
-                        "CertReqdBySupplier": 1,
-                        "CanNotCreateWorkOrder": 1,
-                        "CanNotInvoice": 1,
-                        "PurchaseAccountFK": 125,
-                        "CogsAccFk": 125,
-                        "CalculationTypeFK": 17,
-                        "Comment": code,
-                    }
-                )
-                finish_pks.append(finish_codes_pk)
-
-        router_pk = router.create_router(item_fin_pk, part_num)
-        LOGGER.info(f"Created Router PK: {router_pk}")
-
-        for idx, pk in enumerate(finish_pks, start=1):
-            router.create_router_work_center(pk, router_pk, idx)
-
     def update_rfq(self):
-        """Updates RFQ by deleting old quotes and creating new quotes for a RFQ"""
+        """
+        [TODO:description]
+        """
 
         rfq_pk = simpledialog.askstring(
             title="Enter RFQ #", prompt="Enter the RFQ# you would like to update"

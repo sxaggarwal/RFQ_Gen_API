@@ -762,3 +762,40 @@ class MieTrak:
                         self.quote_assembly_table.delete(assembly_pk[0])
                 if pk[1]:
                     self.quote_table.delete(pk[1])
+
+
+# from main legacy.
+# Update: May10
+# def create_finish_router(
+#     self, finish_description: str, item_fin_pk: int, part_num: str
+# ):
+#     "Adds a router for every finish"
+#     finish_code = finish_description.split("\n")
+#     finish_pks = []
+#
+#     if finish_code:
+#         for code in finish_code:
+#             finish_codes_pk = item.get_or_create_item(
+#                 **{
+#                     "PartNumber": code[:100],
+#                     "Description": code[
+#                         :490
+#                     ],  # TODO: Fix this as its crossing the limit, add this to the comments.
+#                     "Inventoriable": 0,
+#                     "ItemTypeFK": 5,
+#                     "CertReqdBySupplier": 1,
+#                     "CanNotCreateWorkOrder": 1,
+#                     "CanNotInvoice": 1,
+#                     "PurchaseAccountFK": 125,
+#                     "CogsAccFk": 125,
+#                     "CalculationTypeFK": 17,
+#                     "Comment": code,
+#                 }
+#             )
+#             finish_pks.append(finish_codes_pk)
+#
+#     router_pk = router.create_router(item_fin_pk, part_num)
+#     LOGGER.info(f"Created Router PK: {router_pk}")
+#
+#     for idx, pk in enumerate(finish_pks, start=1):
+#         router.create_router_work_center(pk, router_pk, idx)
